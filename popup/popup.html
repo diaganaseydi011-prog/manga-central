@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MangaCentral</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600;700&family=Rajdhani:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <div class="cityscape" aria-hidden="true"></div>
+  <div class="hud-grid" aria-hidden="true"></div>
+  <div class="hud-scan-overlay" aria-hidden="true"></div>
+  <!-- HEADER : Logo + Compteur -->
+  <header class="header">
+    <div class="header-inner">
+      <div class="logo-wrap">
+        <span class="logo-icon">⚙</span>
+        <h1 class="logo">MangaCentral</h1>
+      </div>
+      <div class="header-counter">
+        <div class="counter-ring">
+          <span class="counter-value" id="readingCount">0</span>
+        </div>
+        <span class="counter-label">Chapitres lus</span>
+      </div>
+    </div>
+    <div class="header-glow"></div>
+    <div class="header-scan" aria-hidden="true"></div>
+  </header>
+
+  <!-- CONTENU PRINCIPAL -->
+  <main class="main">
+    <!-- TAB: Tableau de bord — 2 colonnes (bibliothèque gauche, en cours droite) -->
+    <section id="dashboard" class="tab-content active">
+      <div class="dashboard-control-center">
+        <!-- Colonne gauche: Bibliothèque -->
+        <div class="dashboard-left">
+          <h2 class="panel-title">Bibliothèque</h2>
+          <div id="readingList" class="manga-grid">
+            <div class="empty-state">
+              <p>Aucune lecture en cours</p>
+              <small>Ouvrez un chapitre pour commencer</small>
+            </div>
+          </div>
+        </div>
+        <!-- Colonne droite: En cours de lecture (focal) -->
+        <div class="dashboard-right">
+          <div class="panel-title-wrap">
+            <span class="panel-title-accent"></span>
+            <h2 class="panel-title">En cours de lecture</h2>
+          </div>
+          <div id="currentReadingBlock" class="current-reading-card">
+            <div class="current-reading-placeholder">
+              <div class="placeholder-icon">📚</div>
+              <p>Aucun manga en cours</p>
+              <small>Vos lectures apparaîtront ici</small>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB: Librairie -->
+    <section id="library" class="tab-content">
+      <div class="section-header">
+        <h2 class="panel-title">Ma Bibliothèque</h2>
+        <div class="add-buttons">
+          <button id="addCurrentPageBtn" class="btn-neon" title="Ouvrez un chapitre manga puis cliquez ici">📄 Page actuelle</button>
+          <button id="addManualBtn" class="btn-ghost">✏️ Manuellement</button>
+        </div>
+      </div>
+      <div class="search-container">
+        <input type="text" id="librarySearchInput" class="search-input" placeholder="Rechercher dans la bibliothèque...">
+        <select id="librarySortSelect" class="input-neon" aria-label="Trier la bibliothèque">
+          <option value="title_asc">Titre (A → Z)</option>
+          <option value="title_desc">Titre (Z → A)</option>
+          <option value="lastread_desc">Dernière lecture</option>
+          <option value="added_desc">Ajout récent</option>
+        </select>
+        <select id="libraryDomainSelect" class="input-neon" aria-label="Filtrer par site">
+          <option value="">Tous les sites</option>
+        </select>
+      </div>
+      <div class="filter-buttons">
+        <button class="filter-btn active" data-status="all">Tous</button>
+        <button class="filter-btn" data-status="reading">En cours</button>
+        <button class="filter-btn" data-status="completed">Terminés</button>
+        <button class="filter-btn" data-status="paused">En pause</button>
+      </div>
+      <div id="libraryList" class="manga-list">
+        <div class="empty-state"><p>Bibliothèque vide</p><small>Ajoutez vos mangas favoris</small></div>
+      </div>
+    </section>
+
+    <!-- TAB: Découverte -->
+    <section id="search" class="tab-content">
+      <div class="search-container">
+        <input type="text" id="searchInput" class="search-input" placeholder="Rechercher un manga...">
+        <button id="searchBtn" class="btn-neon">🔍</button>
+      </div>
+      <div id="searchLoading" class="loading-spinner" style="display:none;">
+        <div class="spinner"></div>
+        <p>Recherche...</p>
+      </div>
+      <div id="searchResults" class="search-results">
+        <div class="empty-state"><p>Entrez un titre pour rechercher</p></div>
+      </div>
+    </section>
+
+    <!-- TAB: Historique -->
+    <section id="history" class="tab-content">
+      <div class="section-header">
+        <h2 class="panel-title">Historique</h2>
+        <button id="clearHistoryBtn" class="btn-danger">Effacer</button>
+      </div>
+      <div id="historyList" class="history-list">
+        <div class="empty-state"><p>Aucun historique</p></div>
+      </div>
+    </section>
+
+    <!-- TAB: Paramètres (réglages + sites personnalisés) -->
+    <section id="settings" class="tab-content">
+      <div class="settings-block">
+        <h2 class="panel-title">Paramètres</h2>
+        <div class="form-row">
+          <label>Vitesse autoscroll</label>
+          <div class="slider-row">
+            <input type="range" id="defaultScrollSpeed" min="1" max="10" value="2" class="slider">
+            <span id="speedValue">2</span>
+          </div>
+        </div>
+        <div class="form-row">
+          <label>Clé API Gemini (traduction)</label>
+          <input type="password" id="geminiApiKey" class="input-neon" placeholder="Clé API...">
+        </div>
+        <div class="form-row">
+          <label>Langue de traduction</label>
+          <select id="translationLang" class="input-neon">
+            <option value="fr">Français</option>
+            <option value="en">English</option>
+            <option value="es">Español</option>
+            <option value="de">Deutsch</option>
+          </select>
+        </div>
+        <button id="saveSettingsBtn" class="btn-neon full">Enregistrer</button>
+      </div>
+      <div class="settings-block">
+        <h2 class="panel-title">Sites personnalisés</h2>
+        <button id="addCustomSiteBtn" class="btn-neon">+ Ajouter un site</button>
+        <div id="customSitesList" class="custom-sites-preview">
+          <div class="empty-state"><p>Aucun site personnalisé</p><small>Ajoutez vos sites de manga</small></div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- BOTTOM NAV -->
+  <nav class="bottom-nav">
+    <button class="nav-tab active" data-tab="dashboard" title="Tableau de bord">
+      <span class="nav-icon">⌂</span>
+      <span class="nav-label">Tableau de bord</span>
+    </button>
+    <button class="nav-tab" data-tab="library" title="Librairie">
+      <span class="nav-icon">📚</span>
+      <span class="nav-label">Librairie</span>
+    </button>
+    <button class="nav-tab" data-tab="search" title="Découverte">
+      <span class="nav-icon">◇</span>
+      <span class="nav-label">Découverte</span>
+    </button>
+    <button class="nav-tab" data-tab="history" title="Historique">
+      <span class="nav-icon">🕐</span>
+      <span class="nav-label">Historique</span>
+    </button>
+    <button class="nav-tab" data-tab="settings" title="Paramètres">
+      <span class="nav-icon">⚙</span>
+      <span class="nav-label">Paramètres</span>
+    </button>
+  </nav>
+
+  <div id="toastContainer" class="toast-container"></div>
+
+  <!-- Modal: Ajouter à la bibliothèque (manuel – simplifié) -->
+  <div id="addModal" class="modal">
+    <div class="modal-backdrop"></div>
+    <div class="modal-content modal-neon">
+      <div class="modal-header">
+        <h3>Ajouter un titre</h3>
+        <button class="close-btn">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-row"><label>Titre</label><input type="text" id="modalTitle" class="input-neon" placeholder="Ex: Solo Leveling" required></div>
+        <div class="form-row"><label>URL du chapitre (optionnel)</label><input type="url" id="modalUrl" class="input-neon" placeholder="https://..."></div>
+        <div class="form-row"><label>Statut</label>
+          <select id="modalStatus" class="input-neon">
+            <option value="reading">En cours</option>
+            <option value="completed">Terminé</option>
+            <option value="paused">En pause</option>
+          </select>
+        </div>
+        <div class="modal-advanced" id="modalAdvanced">
+          <button type="button" class="btn-toggle-advanced" id="toggleAdvancedBtn">+ Couverture (optionnel)</button>
+          <div class="form-row advanced-row" id="modalCoverRow" style="display:none;">
+            <label>URL de la couverture</label>
+            <input type="url" id="modalCover" class="input-neon" placeholder="https://...">
+            <div class="cover-upload-row">
+              <label class="cover-upload-label" for="modalCoverFile">Ou importer une image</label>
+              <input type="file" id="modalCoverFile" class="input-neon" accept="image/*">
+              <div class="cover-upload-actions">
+                <button type="button" id="clearCoverBtn" class="btn-ghost">Retirer la couverture</button>
+              </div>
+              <small class="cover-upload-hint">L’image importée est redimensionnée et enregistrée localement.</small>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button id="cancelModalBtn" class="btn-ghost">Annuler</button>
+        <button id="saveModalBtn" class="btn-neon">Enregistrer</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Site personnalisé -->
+  <div id="siteModal" class="modal">
+    <div class="modal-backdrop"></div>
+    <div class="modal-content modal-neon modal-wide">
+      <div class="modal-header">
+        <h3>Site personnalisé</h3>
+        <button class="close-btn" data-close="siteModal">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-row"><label>Nom</label><input type="text" id="siteName" class="input-neon" placeholder="ex: Mon Scan"></div>
+        <div class="form-row"><label>Domaine</label><input type="text" id="siteDomain" class="input-neon" placeholder="monsite.com"></div>
+        <div class="form-row"><label>Sélecteur titre (CSS)</label><input type="text" id="siteTitleSelector" class="input-neon" placeholder=".entry-title, h1"></div>
+        <div class="form-row"><label>Pattern chapitre (regex)</label><input type="text" id="siteChapterPattern" class="input-neon" placeholder="chapter[-_]?(\\d+)"></div>
+        <div class="form-row"><label>Conteneur images</label><input type="text" id="siteContainerSelector" class="input-neon" placeholder="#readerarea"></div>
+        <div class="form-row"><label>Sélecteur image</label><input type="text" id="siteImageSelector" class="input-neon" placeholder="img"></div>
+        <div class="form-row"><label>Couverture (optionnel)</label><input type="text" id="siteCoverSelector" class="input-neon" placeholder=".thumb img"></div>
+        <div class="form-row"><label>Bouton suivant</label><input type="text" id="siteNextSelector" class="input-neon" placeholder=".ch-next-btn"></div>
+        <div class="form-row"><label>Bouton précédent</label><input type="text" id="sitePrevSelector" class="input-neon" placeholder=".ch-prev-btn"></div>
+      </div>
+      <div class="modal-footer">
+        <button id="cancelSiteBtn" class="btn-ghost">Annuler</button>
+        <button id="saveSiteBtn" class="btn-neon">Enregistrer</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>

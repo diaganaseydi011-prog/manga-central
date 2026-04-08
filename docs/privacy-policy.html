@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Politique de confidentialité — MangaCentral</title>
+  <style>
+    body { font-family: system-ui, sans-serif; line-height: 1.55; max-width: 42rem; margin: 2rem auto; padding: 0 1rem; color: #1a1a1a; }
+    h1 { font-size: 1.5rem; }
+    h2 { font-size: 1.15rem; margin-top: 1.75rem; }
+    p, li { font-size: 0.95rem; }
+    ul { padding-left: 1.25rem; }
+    .muted { color: #555; font-size: 0.9rem; }
+    .box { background: #f5f5f5; padding: 1rem 1.1rem; border-radius: 8px; margin: 1rem 0; }
+  </style>
+</head>
+<body>
+  <h1>Politique de confidentialité — MangaCentral</h1>
+  <p class="muted">Dernière mise à jour : 8 avril 2026</p>
+
+  <p>
+    MangaCentral est une extension de navigateur (Chrome / navigateurs compatibles Chromium) qui aide au suivi de lecture
+    et propose des outils d’assistance sur les pages que vous consultez. Cette page décrit quelles données sont traitées,
+    où elles sont stockées et quels services tiers peuvent être sollicités <strong>lorsque vous utilisez l’extension</strong>.
+  </p>
+
+  <h2>1. Responsable et contact</h2>
+  <p>
+    Pour toute question relative à cette politique, vous pouvez contacter l’éditeur de l’extension à l’adresse suivante :
+    <strong><!-- REMPLACER -->contact@example.com<!-- /REMPLACER --></strong>.
+  </p>
+
+  <h2>2. Données stockées localement sur votre appareil</h2>
+  <p>L’extension utilise le stockage local du navigateur (<code>chrome.storage.local</code>) pour :</p>
+  <ul>
+    <li>votre <strong>historique de lecture</strong> (titres, numéros de chapitre, URL des pages visitées dans ce cadre, éventuellement liens de couverture) ;</li>
+    <li>votre <strong>bibliothèque</strong> et paramètres (vitesse de défilement, sites personnalisés, etc.) ;</li>
+    <li>si vous le choisissez, une <strong>clé API Google Gemini</strong> que vous saisissez vous-même dans les paramètres — elle reste sur votre machine et n’est pas envoyée à nos serveurs (nous n’exploitons pas de serveur dédié à l’extension pour la collecter).</li>
+  </ul>
+  <p>Ces données ne sont pas synchronisées sur nos systèmes : elles restent sur l’appareil où l’extension est installée, sauf export ou synchronisation que vous feriez vous-même en dehors de l’extension.</p>
+
+  <h2>3. Capture d’écran et image pour traduction / OCR</h2>
+  <p>
+    Lorsque vous déclenchez une fonctionnalité de type capture ou sélection de zone, l’extension peut capturer
+    la zone visible de l’onglet concerné ou traiter une image issue de cette sélection. Ces actions ne s’exécutent
+    <strong>que sur votre initiative</strong>.
+  </p>
+  <p>
+    Si vous avez configuré une clé API Gemini, l’image (ou une représentation dérivée) peut être envoyée aux
+    <strong>serveurs Google (API Gemini)</strong> uniquement pour produire une transcription / traduction demandée par vous.
+    Nous ne recevons pas une copie de ces images sur un serveur « MangaCentral ».
+  </p>
+
+  <h2>4. Recherche et métadonnées (APIs publiques)</h2>
+  <p>Pour la recherche de titres et suggestions de liens, l’extension peut appeler des services tiers publics, notamment :</p>
+  <ul>
+    <li><strong>MangaDex</strong> (API <code>api.mangadex.org</code>) ;</li>
+    <li><strong>Jikan</strong> (API <code>api.jikan.moe</code>) ;</li>
+    <li><strong>AniList</strong> (GraphQL <code>graphql.anilist.co</code>).</li>
+  </ul>
+  <p>
+    Ces appels portent en principe sur des requêtes de recherche (titres) et la récupération de métadonnées publiques.
+    Les conditions et politiques de confidentialité de ces services s’appliquent en complément.
+  </p>
+  <p>
+    Si une clé Gemini est configurée, une suggestion de lien peut également être obtenue via l’API Gemini (texte),
+    selon les conditions de Google.
+  </p>
+
+  <h2>5. Pas d’enregistrement de chapitres sur le disque</h2>
+  <p>
+    L’extension <strong>ne propose pas</strong> de téléchargement de chapitres ou d’archives vers votre ordinateur.
+    Les images de page peuvent être traitées en mémoire uniquement pour les actions que vous lancez (par ex. traduction / OCR).
+  </p>
+
+  <h2>6. Cookies et requêtes réseau</h2>
+  <p>
+    Certaines opérations (par exemple récupération d’images pour affichage ou traitement côté client) peuvent effectuer des requêtes
+    réseau vers les URL que vous consultez, avec des options de type « credentials » selon le cas, afin de respecter
+    les contraintes des sites visités. L’extension ne lit pas vos mots de passe stockés dans le navigateur et ne les transmet pas.
+  </p>
+
+  <h2>7. Pas de vente de données</h2>
+  <p>
+    Nous ne vendons pas vos données personnelles. Nous n’exploitons pas de profilage publicitaire au sein de l’extension
+    et ne revendons pas l’historique de lecture à des tiers.
+  </p>
+
+  <h2>8. Vos choix</h2>
+  <ul>
+    <li>Vous pouvez <strong>supprimer</strong> les données de l’extension via les paramètres du navigateur (données de l’extension) ou les options prévues dans l’extension.</li>
+    <li>Vous pouvez <strong>retirer</strong> votre clé API Gemini à tout moment dans les paramètres.</li>
+    <li>Vous pouvez <strong>désinstaller</strong> l’extension : le stockage associé peut alors être effacé selon les réglages du navigateur.</li>
+  </ul>
+
+  <h2>9. Enfants</h2>
+  <p>L’extension n’est pas destinée aux enfants de moins de 13 ans de manière spécifique ; le contenu des sites que vous visitez relève de votre responsabilité.</p>
+
+  <h2>10. Modifications</h2>
+  <p>Nous pouvons mettre à jour cette politique pour refléter l’évolution de l’extension ou des obligations légales. La date en tête de page sera ajustée en conséquence.</p>
+
+  <div class="box">
+    <strong>Rappel pour le Chrome Web Store :</strong> indiquez l’URL publique de cette page dans le champ
+    « Politique de confidentialité » du tableau de bord développeur après l’avoir hébergée (par ex. GitHub Pages).
+  </div>
+</body>
+</html>

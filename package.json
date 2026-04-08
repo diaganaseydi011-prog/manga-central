@@ -1,0 +1,16 @@
+{
+  "name": "mangacentral-extension",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "build:content": "npx vite build --config vite.content.config.ts",
+    "build:extension": "npm run build:content"
+  },
+  "dependencies": {},
+  "devDependencies": {
+    "@types/node": "^22.14.0",
+    "typescript": "~5.8.2",
+    "vite": "^6.2.0"
+  }
+}

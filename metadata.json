@@ -1,0 +1,5 @@
+{
+  "name": "MangaCentral Extension",
+  "description": "A Chrome Extension to centralize manga reading, tracking, and utilities.",
+  "requestFramePermissions": []
+}

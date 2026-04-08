@@ -1,0 +1,919 @@
+/**
+ * UI Manager - Gère l'affichage de l'overlay et des outils interactifs.
+ */
+export default class UIManager {
+    constructor(parser, autoScroller) {
+      this.parser = parser;
+      this.autoScroller = autoScroller;
+      this.shadowRoot = null;
+      this.cropActive = false;
+      this.selectionStart = null;
+      this._dragState = null;
+      this._resizeState = null;
+      this._dockDragState = null;
+      this._dockState = { enabled: true, side: 'right', collapsed: false, top: null, freePos: null };
+    }
+  
+    init(meta) {
+      // 1. Création du Host
+      const host = document.createElement('div');
+      host.id = 'manga-central-overlay-host';
+      host.style.position = 'fixed';
+      host.style.zIndex = '2147483647';
+      host.style.top = '0';
+      host.style.left = '0';
+      host.style.width = '0'; // Pour ne pas bloquer les clics par défaut
+      host.style.height = '0';
+      document.body.appendChild(host);
+  
+      this.shadowRoot = host.attachShadow({ mode: 'open' });
+
+      // 2. Load CSS principal (Shadow DOM)
+      const styleLink = document.createElement('link');
+      styleLink.rel = 'stylesheet';
+      styleLink.href = chrome.runtime.getURL('assets/styles/overlay.css');
+      this.shadowRoot.appendChild(styleLink);
+
+      // 3. HTML Structure
+      const container = document.createElement('div');
+      container.className = 'mc-container';
+      container.innerHTML = `
+        <div id="crop-layer" class="mc-crop-layer" style="display:none;">
+          <div id="crop-selection" class="mc-crop-selection"></div>
+          <div class="mc-crop-hint">Sélectionnez une zone à traduire (Echap pour annuler)</div>
+        </div>
+        <div class="mc-floating-panel mc-docked" data-dock-side="right">
+          <div id="mc-dock-handle" class="mc-dock-handle" title="Faire glisser pour déplacer / Cliquer pour cacher"></div>
+          <div class="mc-panel-header">
+            <span class="mc-icon">📚</span>
+            <div class="mc-info">
+              <span class="mc-title" title="${meta.title}">${meta.title}</span>
+              <span class="mc-chapter">Ch. ${meta.chapter}</span>
+            </div>
+          </div>
+          <div id="mc-resize-right" class="mc-resize-right" title="Largeur"></div>
+          <div id="mc-resize-bottom" class="mc-resize-bottom" title="Hauteur"></div>
+          <div id="mc-resize-corner" class="mc-resize-corner" title="Redimensionner (proportionnel)"></div>
+          <div class="mc-controls-wrap">
+            <div class="mc-controls">
+              <button type="button" id="btn-top" class="mc-btn" title="Haut de page"><span class="mc-btn-icon">⬆</span>Haut</button>
+              <button type="button" id="btn-scroll" class="mc-btn" title="Auto-Scroll"><span class="mc-btn-icon">📜</span>Scroll</button>
+              <button type="button" id="btn-ocr" class="mc-btn" title="Scanner & Traduire"><span class="mc-btn-icon">🔍</span>OCR</button>
+              <button type="button" id="btn-bottom" class="mc-btn" title="Bas de page"><span class="mc-btn-icon">⬇</span>Bas</button>
+            </div>
+          </div>
+          <div class="mc-speed-control" id="speed-control" style="display:none;">
+            <input type="range" min="1" max="10" value="2" id="range-speed">
+          </div>
+        </div>
+        <div id="translation-popup" class="mc-translation-popup" style="display:none;">
+          <div class="mc-translation-header"><span>Traduction</span><button id="close-trans">×</button></div>
+          <div id="translation-content" class="mc-translation-content">...</div>
+        </div>
+      `;
+  
+      this.shadowRoot.appendChild(container);
+
+      this._attachListeners(meta);
+      this._setupDockedPanel();
+      this._setupDraggablePanel();
+      this._setupResizablePanel();
+    }
+
+    /**
+     * Met à jour l’affichage (titre / chapitre) et optionnellement le parser (pour DL, etc.)
+     * Appelé quand l’utilisateur navigue vers un autre chapitre sans recharger la page.
+     */
+    updateMeta(meta, parser = null) {
+      if (parser) this.parser = parser;
+      if (!this.shadowRoot) return;
+      const titleEl = this.shadowRoot.querySelector('.mc-title');
+      const chapterEl = this.shadowRoot.querySelector('.mc-chapter');
+      if (titleEl) {
+        titleEl.textContent = meta.title || '';
+        titleEl.setAttribute('title', meta.title || '');
+      }
+      if (chapterEl) chapterEl.textContent = 'Ch. ' + (meta.chapter || '?');
+    }
+  
+    _attachListeners(meta) {
+      // Navigation (rester sur la page, pas de suivi de lien)
+      this.shadowRoot.getElementById('btn-top').addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      });
+      this.shadowRoot.getElementById('btn-bottom').addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
+      });
+
+      // AutoScroll
+      const btnScroll = this.shadowRoot.getElementById('btn-scroll');
+      const speedControl = this.shadowRoot.getElementById('speed-control');
+      const rangeSpeed = this.shadowRoot.getElementById('range-speed');
+  
+      btnScroll.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        const isActive = this.autoScroller.toggle();
+        btnScroll.classList.toggle('active', isActive);
+        speedControl.style.display = isActive ? 'block' : 'none';
+      });
+  
+      rangeSpeed.addEventListener('input', (e) => {
+        this.autoScroller.setSpeed(parseInt(e.target.value));
+      });
+  
+      // OCR / Crop
+      this.shadowRoot.getElementById('btn-ocr').addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        this.startCropMode();
+      });
+  
+      // Crop Layer Interactions
+      const cropLayer = this.shadowRoot.getElementById('crop-layer');
+      cropLayer.addEventListener('mousedown', (e) => this._onCropStart(e));
+      cropLayer.addEventListener('mousemove', (e) => this._onCropMove(e));
+      cropLayer.addEventListener('mouseup', (e) => this._onCropEnd(e));
+
+      // Close Translation
+      this.shadowRoot.getElementById('close-trans').addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        this.shadowRoot.getElementById('translation-popup').style.display = 'none';
+      });
+  
+      // Global Escape to cancel crop
+      document.addEventListener('keydown', (e) => {
+          if (e.key === 'Escape' && this.cropActive) this.stopCropMode();
+      });
+    }
+
+    async _setupDraggablePanel() {
+      if (!this.shadowRoot) return;
+      const panel = this.shadowRoot.querySelector('.mc-floating-panel');
+      const header = this.shadowRoot.querySelector('.mc-panel-header');
+      if (!panel || !header) return;
+
+      header.style.cursor = 'move';
+      header.style.userSelect = 'none';
+      header.style.touchAction = 'none';
+
+      const clamp = (v, min, max) => Math.min(max, Math.max(min, v));
+      const getPanelSize = () => {
+        const r = panel.getBoundingClientRect();
+        return { w: r.width || 280, h: r.height || 200 };
+      };
+
+      const applyPosition = (x, y) => {
+        const { w, h } = getPanelSize();
+        const maxX = Math.max(0, window.innerWidth - w);
+        const maxY = Math.max(0, window.innerHeight - h);
+        const cx = clamp(x, 0, maxX);
+        const cy = clamp(y, 0, maxY);
+        panel.style.left = cx + 'px';
+        panel.style.top = cy + 'px';
+        panel.style.right = 'auto';
+        panel.style.bottom = 'auto';
+        return { x: cx, y: cy };
+      };
+
+      const setDocked = async (enabled, side = 'right') => {
+        this._dockState.enabled = !!enabled;
+        if (!this._dockState.enabled) {
+          panel.classList.remove('mc-docked');
+          panel.classList.remove('mc-collapsed');
+          panel.dataset.dockSide = '';
+          panel.style.transform = '';
+          panel.style.bottom = 'auto';
+          panel.style.right = 'auto';
+          panel.style.left = (this._dockState.freePos && typeof this._dockState.freePos.x === 'number') ? (this._dockState.freePos.x + 'px') : panel.style.left;
+          panel.style.top = (this._dockState.freePos && typeof this._dockState.freePos.y === 'number') ? (this._dockState.freePos.y + 'px') : panel.style.top;
+          try { await chrome.storage.local.set({ overlayDockState: this._dockState }); } catch (_) {}
+          return;
+        }
+        this._dockState.side = (side === 'left' || side === 'bottom') ? side : 'right';
+        panel.classList.add('mc-docked');
+        panel.dataset.dockSide = this._dockState.side;
+        panel.classList.toggle('mc-collapsed', !!this._dockState.collapsed);
+        panel.style.right = this._dockState.side === 'right' ? '0' : 'auto';
+        panel.style.left = this._dockState.side === 'left' ? '0' : (this._dockState.side === 'bottom' ? '20px' : 'auto');
+        panel.style.bottom = this._dockState.side === 'bottom' ? '0' : 'auto';
+        if (this._dockState.side === 'bottom') {
+          panel.style.top = 'auto';
+        } else {
+          panel.style.top = (typeof this._dockState.top === 'number') ? (this._dockState.top + 'px') : panel.style.top;
+        }
+        try { await chrome.storage.local.set({ overlayDockState: this._dockState }); } catch (_) {}
+      };
+
+      const snapDockIfNearEdges = async () => {
+        if (this._dockState.enabled) return;
+        const rect = panel.getBoundingClientRect();
+        const SNAP = 26;
+        const nearLeft = rect.left <= SNAP;
+        const nearRight = (window.innerWidth - rect.right) <= SNAP;
+        const nearBottom = (window.innerHeight - rect.bottom) <= SNAP;
+
+        if (!nearLeft && !nearRight && !nearBottom) return;
+        let side = 'right';
+        if (nearBottom) side = 'bottom';
+        else if (nearLeft) side = 'left';
+        else if (nearRight) side = 'right';
+
+        if (side === 'bottom') {
+          this._dockState.top = null;
+        } else {
+          this._dockState.top = clamp(rect.top, 10, Math.max(10, window.innerHeight - rect.height - 10));
+        }
+        await setDocked(true, side);
+      };
+
+      const cycleDockMode = async () => {
+        if (!this._dockState.enabled) {
+          await setDocked(true, 'right');
+          return;
+        }
+        if (this._dockState.side === 'right') {
+          await setDocked(true, 'left');
+        } else if (this._dockState.side === 'left') {
+          await setDocked(true, 'bottom');
+        } else {
+          // bottom -> free
+          this._dockState.freePos = (() => {
+            const rect = panel.getBoundingClientRect();
+            return {
+              x: clamp(rect.left, 0, Math.max(0, window.innerWidth - rect.width)),
+              y: clamp(rect.top, 0, Math.max(0, window.innerHeight - rect.height)),
+            };
+          })();
+          await setDocked(false);
+        }
+      };
+
+      const loadPos = async () => {
+        try {
+          const { overlayPanelPos } = await chrome.storage.local.get('overlayPanelPos');
+          if (overlayPanelPos && typeof overlayPanelPos.x === 'number' && typeof overlayPanelPos.y === 'number') {
+            return overlayPanelPos;
+          }
+        } catch (_) {}
+        return null;
+      };
+
+      const savePos = async (pos) => {
+        try {
+          await chrome.storage.local.set({ overlayPanelPos: { x: pos.x, y: pos.y } });
+        } catch (_) {}
+      };
+
+      const init = async () => {
+        const savedDock = await (async () => {
+          try {
+            const { overlayDockState } = await chrome.storage.local.get('overlayDockState');
+            if (overlayDockState && typeof overlayDockState === 'object') return overlayDockState;
+          } catch (_) {}
+          return null;
+        })();
+        if (savedDock) {
+          this._dockState.enabled = savedDock.enabled !== false;
+          this._dockState.side = (savedDock.side === 'left' || savedDock.side === 'bottom') ? savedDock.side : 'right';
+          this._dockState.collapsed = !!savedDock.collapsed;
+          this._dockState.top = (typeof savedDock.top === 'number') ? savedDock.top : null;
+          this._dockState.freePos = (savedDock.freePos && typeof savedDock.freePos.x === 'number' && typeof savedDock.freePos.y === 'number') ? savedDock.freePos : null;
+        }
+
+        if (this._dockState.enabled) {
+          panel.classList.add('mc-docked');
+          panel.dataset.dockSide = this._dockState.side;
+          panel.classList.toggle('mc-collapsed', !!this._dockState.collapsed);
+          panel.style.right = this._dockState.side === 'right' ? '0' : 'auto';
+          panel.style.left = this._dockState.side === 'left' ? '0' : (this._dockState.side === 'bottom' ? '20px' : 'auto');
+          panel.style.bottom = this._dockState.side === 'bottom' ? '0' : 'auto';
+          if (this._dockState.side === 'bottom') {
+            panel.style.top = 'auto';
+          } else {
+            const rect = panel.getBoundingClientRect();
+            const h = rect.height || 240;
+            const minTop = 10;
+            const maxTop = Math.max(10, window.innerHeight - h - 10);
+            const top = (typeof this._dockState.top === 'number') ? this._dockState.top : clamp(120, minTop, maxTop);
+            const cTop = clamp(top, minTop, maxTop);
+            panel.style.top = cTop + 'px';
+            this._dockState.top = cTop;
+          }
+          try { await chrome.storage.local.set({ overlayDockState: this._dockState }); } catch (_) {}
+        } else {
+          panel.classList.remove('mc-docked');
+          panel.classList.remove('mc-collapsed');
+          panel.dataset.dockSide = '';
+          const saved = this._dockState.freePos || (await loadPos());
+          const { w, h } = getPanelSize();
+          const defaultX = Math.max(0, window.innerWidth - w - 20);
+          const defaultY = Math.max(0, window.innerHeight - h - 20);
+          const pos = applyPosition(saved ? saved.x : defaultX, saved ? saved.y : defaultY);
+          this._dockState.freePos = { x: pos.x, y: pos.y };
+          try { await chrome.storage.local.set({ overlayDockState: this._dockState }); } catch (_) {}
+        }
+      };
+
+      const scheduleInit = () => {
+        requestAnimationFrame(() => {
+          requestAnimationFrame(() => {
+            init();
+          });
+        });
+      };
+      scheduleInit();
+
+      const onResize = async () => {
+        if (!panel.style.left || !panel.style.top) return;
+        const x = parseFloat(panel.style.left) || 0;
+        const y = parseFloat(panel.style.top) || 0;
+        const pos = applyPosition(x, y);
+        await savePos(pos);
+      };
+      window.addEventListener('resize', onResize);
+
+      header.addEventListener('dblclick', (e) => {
+        if (this.cropActive) return;
+        e.preventDefault();
+        e.stopPropagation();
+        cycleDockMode();
+      });
+
+      header.addEventListener('pointerdown', (e) => {
+        if (e.button != null && e.button !== 0) return;
+        if (this.cropActive) return;
+        if (this._dockState.enabled) return;
+        e.preventDefault();
+        e.stopPropagation();
+
+        const rect = panel.getBoundingClientRect();
+        this._dragState = {
+          startClientX: e.clientX,
+          startClientY: e.clientY,
+          startLeft: rect.left,
+          startTop: rect.top,
+          pointerId: e.pointerId,
+          moved: false,
+        };
+        try { header.setPointerCapture(e.pointerId); } catch (_) {}
+      });
+
+      header.addEventListener('pointermove', (e) => {
+        if (!this._dragState || this._dragState.pointerId !== e.pointerId) return;
+        e.preventDefault();
+        e.stopPropagation();
+        const dx = e.clientX - this._dragState.startClientX;
+        const dy = e.clientY - this._dragState.startClientY;
+        if (Math.abs(dx) > 2 || Math.abs(dy) > 2) this._dragState.moved = true;
+        applyPosition(this._dragState.startLeft + dx, this._dragState.startTop + dy);
+      });
+
+      const endDrag = async (e) => {
+        if (!this._dragState || this._dragState.pointerId !== e.pointerId) return;
+        e.preventDefault();
+        e.stopPropagation();
+        try { header.releasePointerCapture(e.pointerId); } catch (_) {}
+        const x = parseFloat(panel.style.left) || 0;
+        const y = parseFloat(panel.style.top) || 0;
+        const pos = applyPosition(x, y);
+        await savePos(pos);
+        this._dockState.freePos = { x: pos.x, y: pos.y };
+        try { await chrome.storage.local.set({ overlayDockState: this._dockState }); } catch (_) {}
+        this._dragState = null;
+        await snapDockIfNearEdges();
+      };
+
+      header.addEventListener('pointerup', endDrag);
+      header.addEventListener('pointercancel', endDrag);
+    }
+
+    async _setupDockedPanel() {
+      if (!this.shadowRoot) return;
+      const panel = this.shadowRoot.querySelector('.mc-floating-panel');
+      const handle = this.shadowRoot.getElementById('mc-dock-handle');
+      if (!panel || !handle) return;
+
+      const clamp = (v, min, max) => Math.min(max, Math.max(min, v));
+
+      const loadDock = async () => {
+        try {
+          const { overlayDockState } = await chrome.storage.local.get('overlayDockState');
+          if (overlayDockState && typeof overlayDockState === 'object') return overlayDockState;
+        } catch (_) {}
+        return null;
+      };
+
+      const saveDock = async () => {
+        try {
+          await chrome.storage.local.set({ overlayDockState: this._dockState });
+        } catch (_) {}
+      };
+
+      const applyDockState = () => {
+        panel.classList.toggle('mc-docked', !!this._dockState.enabled);
+        panel.classList.toggle('mc-collapsed', !!this._dockState.collapsed);
+        if (!this._dockState.enabled) {
+          panel.dataset.dockSide = '';
+          panel.style.transform = '';
+          panel.style.right = 'auto';
+          panel.style.bottom = 'auto';
+          if (this._dockState.freePos && typeof this._dockState.freePos.x === 'number' && typeof this._dockState.freePos.y === 'number') {
+            panel.style.left = this._dockState.freePos.x + 'px';
+            panel.style.top = this._dockState.freePos.y + 'px';
+          }
+          return;
+        }
+
+        panel.dataset.dockSide = (this._dockState.side === 'left' || this._dockState.side === 'bottom') ? this._dockState.side : 'right';
+        panel.style.right = this._dockState.side === 'right' ? '0' : 'auto';
+        panel.style.left = this._dockState.side === 'left' ? '0' : (this._dockState.side === 'bottom' ? '20px' : 'auto');
+        panel.style.bottom = this._dockState.side === 'bottom' ? '0' : 'auto';
+
+        if (this._dockState.side === 'bottom') {
+          panel.style.top = 'auto';
+          this._dockState.top = null;
+          return;
+        }
+
+        const rect = panel.getBoundingClientRect();
+        const h = rect.height || 240;
+        const minTop = 10;
+        const maxTop = Math.max(10, window.innerHeight - h - 10);
+        const top = (typeof this._dockState.top === 'number') ? this._dockState.top : clamp(120, minTop, maxTop);
+        const cTop = clamp(top, minTop, maxTop);
+        panel.style.top = cTop + 'px';
+        this._dockState.top = cTop;
+      };
+
+      const saved = await loadDock();
+      if (saved) {
+        this._dockState.enabled = saved.enabled !== false;
+        this._dockState.side = (saved.side === 'left' || saved.side === 'bottom') ? saved.side : 'right';
+        this._dockState.collapsed = !!saved.collapsed;
+        this._dockState.top = (typeof saved.top === 'number') ? saved.top : null;
+        this._dockState.freePos = (saved.freePos && typeof saved.freePos.x === 'number' && typeof saved.freePos.y === 'number') ? saved.freePos : null;
+      }
+      applyDockState();
+      await saveDock();
+
+      const toggleCollapsed = async () => {
+        this._dockState.collapsed = !this._dockState.collapsed;
+        applyDockState();
+        await saveDock();
+      };
+
+      const setSide = async (side) => {
+        this._dockState.side = (side === 'left' || side === 'bottom') ? side : 'right';
+        applyDockState();
+        await saveDock();
+      };
+
+      const toggleDocked = async () => {
+        this._dockState.enabled = !this._dockState.enabled;
+        if (!this._dockState.enabled) {
+          const rect = panel.getBoundingClientRect();
+          this._dockState.freePos = {
+            x: clamp(rect.left, 0, Math.max(0, window.innerWidth - rect.width)),
+            y: clamp(rect.top, 0, Math.max(0, window.innerHeight - rect.height)),
+          };
+          this._dockState.collapsed = false;
+        }
+        applyDockState();
+        await saveDock();
+      };
+
+      handle.style.touchAction = 'none';
+      handle.style.userSelect = 'none';
+
+      handle.addEventListener('dblclick', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        if (!this._dockState.enabled) return;
+        const order = ['right', 'left', 'bottom'];
+        const idx = Math.max(0, order.indexOf(this._dockState.side));
+        const next = order[(idx + 1) % order.length];
+        setSide(next);
+      });
+
+      handle.addEventListener('contextmenu', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        toggleDocked();
+      });
+
+      handle.addEventListener('pointerdown', (e) => {
+        if (e.button != null && e.button !== 0) return;
+        if (this.cropActive) return;
+        if (!this._dockState.enabled) return;
+        e.preventDefault();
+        e.stopPropagation();
+
+        const rect = panel.getBoundingClientRect();
+        this._dockDragState = {
+          startClientX: e.clientX,
+          startClientY: e.clientY,
+          startTop: rect.top,
+          startLeft: rect.left,
+          pointerId: e.pointerId,
+          moved: false,
+        };
+        try { handle.setPointerCapture(e.pointerId); } catch (_) {}
+      });
+
+      handle.addEventListener('pointermove', (e) => {
+        if (!this._dockDragState || this._dockDragState.pointerId !== e.pointerId) return;
+        e.preventDefault();
+        e.stopPropagation();
+        const dx = e.clientX - this._dockDragState.startClientX;
+        const dy = e.clientY - this._dockDragState.startClientY;
+        if (Math.abs(dx) > 3 || Math.abs(dy) > 3) this._dockDragState.moved = true;
+
+        const UNDOCK = 28;
+        const side = this._dockState.side;
+        const shouldUndock =
+          (side === 'right' && dx < -UNDOCK) ||
+          (side === 'left' && dx > UNDOCK) ||
+          (side === 'bottom' && dy < -UNDOCK);
+
+        if (shouldUndock) {
+          // Détacher sans "saut" : on prend la position actuelle du panneau
+          const r0 = panel.getBoundingClientRect();
+          this._dockState.enabled = false;
+          this._dockState.collapsed = false;
+          const maxX = Math.max(0, window.innerWidth - r0.width);
+          const maxY = Math.max(0, window.innerHeight - r0.height);
+          const nextLeft = clamp(r0.left, 0, maxX);
+          const nextTop = clamp(r0.top, 0, maxY);
+          this._dockState.freePos = { x: nextLeft, y: nextTop };
+
+          panel.classList.remove('mc-docked');
+          panel.classList.remove('mc-collapsed');
+          panel.dataset.dockSide = '';
+          panel.style.transform = '';
+          panel.style.right = 'auto';
+          panel.style.bottom = 'auto';
+          panel.style.left = nextLeft + 'px';
+          panel.style.top = nextTop + 'px';
+
+          saveDock();
+          // Terminer le drag de la poignée pour éviter tout mouvement supplémentaire
+          try { handle.releasePointerCapture(e.pointerId); } catch (_) {}
+          this._dockDragState = null;
+          return;
+        }
+
+        if (this._dockState.side === 'bottom') return;
+
+        const r = panel.getBoundingClientRect();
+        const h = r.height || 240;
+        const minTop = 10;
+        const maxTop = Math.max(10, window.innerHeight - h - 10);
+        const nextTop = clamp(this._dockDragState.startTop + dy, minTop, maxTop);
+        panel.style.top = nextTop + 'px';
+        this._dockState.top = nextTop;
+      });
+
+      const end = async (e) => {
+        if (!this._dockDragState || this._dockDragState.pointerId !== e.pointerId) return;
+        e.preventDefault();
+        e.stopPropagation();
+        try { handle.releasePointerCapture(e.pointerId); } catch (_) {}
+        const moved = !!this._dockDragState.moved;
+        this._dockDragState = null;
+        if (!moved) {
+          await toggleCollapsed();
+        } else {
+          await saveDock();
+        }
+      };
+
+      handle.addEventListener('pointerup', end);
+      handle.addEventListener('pointercancel', end);
+
+      window.addEventListener('resize', async () => {
+        applyDockState();
+        await saveDock();
+      });
+    }
+
+    async _setupResizablePanel() {
+      if (!this.shadowRoot) return;
+      const panel = this.shadowRoot.querySelector('.mc-floating-panel');
+      const handleRight = this.shadowRoot.getElementById('mc-resize-right');
+      const handleBottom = this.shadowRoot.getElementById('mc-resize-bottom');
+      const handleCorner = this.shadowRoot.getElementById('mc-resize-corner');
+      if (!panel || !handleRight || !handleBottom || !handleCorner) return;
+
+      for (const h of [handleRight, handleBottom, handleCorner]) {
+        h.style.touchAction = 'none';
+        h.style.userSelect = 'none';
+      }
+
+      const MIN_W = 220;
+      const MAX_W = 560;
+      const MIN_H = 180;
+      const MAX_H = 640;
+
+      const clamp = (v, min, max) => Math.min(max, Math.max(min, v));
+
+      const getSize = () => {
+        const rect = panel.getBoundingClientRect();
+        return { w: rect.width || 280, h: rect.height || 240 };
+      };
+
+      const clampToViewport = () => {
+        const rect = panel.getBoundingClientRect();
+        const w = rect.width || 280;
+        const h = rect.height || 240;
+        const maxX = Math.max(0, window.innerWidth - w);
+        const maxY = Math.max(0, window.innerHeight - h);
+        const left = clamp(rect.left, 0, maxX);
+        const top = clamp(rect.top, 0, maxY);
+        panel.style.left = left + 'px';
+        panel.style.top = top + 'px';
+        panel.style.right = 'auto';
+        panel.style.bottom = 'auto';
+      };
+
+      const applySize = (w, h) => {
+        const cw = clamp(w, MIN_W, Math.min(MAX_W, window.innerWidth - 10));
+        const ch = clamp(h, MIN_H, Math.min(MAX_H, window.innerHeight - 10));
+        panel.style.width = cw + 'px';
+        panel.style.height = ch + 'px';
+        clampToViewport();
+        return { w: cw, h: ch };
+      };
+
+      const loadSize = async () => {
+        try {
+          const { overlayPanelSize } = await chrome.storage.local.get('overlayPanelSize');
+          if (overlayPanelSize && typeof overlayPanelSize.w === 'number' && typeof overlayPanelSize.h === 'number') {
+            return overlayPanelSize;
+          }
+        } catch (_) {}
+        return null;
+      };
+
+      const saveSize = async (size) => {
+        try {
+          await chrome.storage.local.set({ overlayPanelSize: { w: size.w, h: size.h } });
+        } catch (_) {}
+      };
+
+      const init = async () => {
+        const saved = await loadSize();
+        if (saved && saved.w && saved.h) applySize(saved.w, saved.h);
+      };
+      requestAnimationFrame(() => init());
+
+      const startResize = (mode, e) => {
+        if (e.button != null && e.button !== 0) return;
+        if (this.cropActive) return;
+        e.preventDefault();
+        e.stopPropagation();
+        const s = getSize();
+        this._resizeState = {
+          mode,
+          startClientX: e.clientX,
+          startClientY: e.clientY,
+          startWidth: s.w,
+          startHeight: s.h,
+          ratio: s.h ? (s.w / s.h) : 1,
+          pointerId: e.pointerId,
+        };
+        try { e.currentTarget.setPointerCapture(e.pointerId); } catch (_) {}
+      };
+
+      const moveResize = (e) => {
+        if (!this._resizeState || this._resizeState.pointerId !== e.pointerId) return;
+        e.preventDefault();
+        e.stopPropagation();
+        const dx = e.clientX - this._resizeState.startClientX;
+        const dy = e.clientY - this._resizeState.startClientY;
+        if (this._resizeState.mode === 'w') {
+          applySize(this._resizeState.startWidth + dx, this._resizeState.startHeight);
+        } else if (this._resizeState.mode === 'h') {
+          applySize(this._resizeState.startWidth, this._resizeState.startHeight + dy);
+        } else {
+          // proportionnel (coin)
+          const targetW = this._resizeState.startWidth + dx;
+          const targetH = targetW / (this._resizeState.ratio || 1);
+          applySize(targetW, targetH);
+        }
+      };
+
+      const endResize = async (e) => {
+        if (!this._resizeState || this._resizeState.pointerId !== e.pointerId) return;
+        e.preventDefault();
+        e.stopPropagation();
+        try { e.currentTarget.releasePointerCapture(e.pointerId); } catch (_) {}
+        const s = getSize();
+        const finalSize = applySize(s.w, s.h);
+        await saveSize(finalSize);
+        this._resizeState = null;
+      };
+
+      handleRight.addEventListener('pointerdown', (e) => startResize('w', e));
+      handleBottom.addEventListener('pointerdown', (e) => startResize('h', e));
+      handleCorner.addEventListener('pointerdown', (e) => startResize('wh', e));
+
+      for (const h of [handleRight, handleBottom, handleCorner]) {
+        h.addEventListener('pointermove', moveResize);
+        h.addEventListener('pointerup', endResize);
+        h.addEventListener('pointercancel', endResize);
+      }
+
+      window.addEventListener('resize', async () => {
+        const s = getSize();
+        const finalSize = applySize(s.w, s.h);
+        await saveSize(finalSize);
+      });
+    }
+  
+    // --- Crop Logic ---
+  
+    startCropMode() {
+        this.cropActive = true;
+        const layer = this.shadowRoot.getElementById('crop-layer');
+        layer.style.display = 'block';
+        document.body.style.cursor = 'crosshair';
+        this.autoScroller.stop(); // Stop scroll during crop
+        this._boundCropEnd = (e) => this._onCropEnd(e);
+        document.addEventListener('mouseup', this._boundCropEnd);
+    }
+  
+    stopCropMode() {
+        this.cropActive = false;
+        if (this._boundCropEnd) {
+            document.removeEventListener('mouseup', this._boundCropEnd);
+            this._boundCropEnd = null;
+        }
+        const layer = this.shadowRoot.getElementById('crop-layer');
+        if (layer) layer.style.display = 'none';
+        const selection = this.shadowRoot.getElementById('crop-selection');
+        if (selection) { selection.style.width = '0'; selection.style.height = '0'; }
+        document.body.style.cursor = 'default';
+    }
+  
+    _onCropStart(e) {
+        if(!this.cropActive) return;
+        this.isSelecting = true;
+        this.selectionStart = { x: e.clientX, y: e.clientY };
+        
+        const selection = this.shadowRoot.getElementById('crop-selection');
+        selection.style.left = e.clientX + 'px';
+        selection.style.top = e.clientY + 'px';
+        selection.style.width = '0px';
+        selection.style.height = '0px';
+        selection.style.display = 'block';
+    }
+  
+    _onCropMove(e) {
+        if(!this.cropActive || !this.isSelecting) return;
+        
+        const currentX = e.clientX;
+        const currentY = e.clientY;
+        
+        const width = Math.abs(currentX - this.selectionStart.x);
+        const height = Math.abs(currentY - this.selectionStart.y);
+        const left = Math.min(currentX, this.selectionStart.x);
+        const top = Math.min(currentY, this.selectionStart.y);
+        
+        const selection = this.shadowRoot.getElementById('crop-selection');
+        selection.style.width = width + 'px';
+        selection.style.height = height + 'px';
+        selection.style.left = left + 'px';
+        selection.style.top = top + 'px';
+    }
+  
+    async _onCropEnd(e) {
+        if(!this.cropActive || !this.isSelecting) return;
+        this.isSelecting = false;
+        
+        // Coordonnées finales par rapport à la fenêtre
+        const selection = this.shadowRoot.getElementById('crop-selection');
+        const rect = selection.getBoundingClientRect();
+        
+        this.stopCropMode();
+  
+        if (rect.width < 10 || rect.height < 10) return; // Trop petit
+  
+        this.showTranslation("🔍 Capture en cours…", true);
+  
+        try {
+            if (!chrome?.runtime?.id) {
+                this.showTranslation("L'extension a été rechargée. Rechargez la page du manga (F5) puis réessayez.");
+                return;
+            }
+            // 1. Demander une capture d'écran complète de l'onglet visible
+            const response = await chrome.runtime.sendMessage({ type: 'CAPTURE_TAB' });
+            
+            if (!response || !response.dataUrl) {
+                const errMsg = (response && response.error) ? response.error : "Impossible de capturer l'écran";
+                throw new Error(errMsg);
+            }
+
+            // 2. Découper l'image localement via Canvas (optimisé OCR)
+            this.showTranslation('✂️ Recadrage…', true);
+            const croppedDataUrl = await this._cropImage(response.dataUrl, rect);
+
+            // Cache OCR simple (évite de repayer/relaisser tourner l'IA pour la même zone)
+            const cacheKey = croppedDataUrl.slice(-120);
+            if (!this._ocrCache) this._ocrCache = new Map();
+            if (this._ocrCache.has(cacheKey)) {
+                this.showTranslation(this._ocrCache.get(cacheKey));
+                return;
+            }
+
+            if (!chrome?.runtime?.id) {
+                this.showTranslation("L'extension a été rechargée. Rechargez la page du manga (F5) puis réessayez.");
+                return;
+            }
+            // 3. Envoyer l'image découpée pour OCR + Traduction
+            this.showTranslation('🤖 Traduction…', true);
+            const translationResponse = await chrome.runtime.sendMessage({
+                type: 'TRANSLATE_TEXT',
+                payload: { image: croppedDataUrl }
+            });
+
+            const text = (translationResponse && translationResponse.translation) ? translationResponse.translation : "Aucune réponse du service de traduction.";
+            this.showTranslation(text);
+            // Cache LRU (max 30 entrées)
+            if (this._ocrCache.size >= 30) {
+                this._ocrCache.delete(this._ocrCache.keys().next().value);
+            }
+            this._ocrCache.set(cacheKey, text);
+
+        } catch (err) {
+            console.error(err);
+            const msg = (err && err.message) ? err.message : String(err);
+            if (msg.includes('Extension context invalidated') || msg.includes('context invalidated')) {
+                this.showTranslation("L'extension a été rechargée ou mise à jour.\n\nRechargez la page du manga (F5) puis réessayez la traduction.");
+            } else {
+                this.showTranslation("Erreur : " + msg);
+            }
+        }
+    }
+
+    /**
+     * Découpe une image Base64 selon les coordonnées fournies
+     */
+    _cropImage(base64Image, rect) {
+        return new Promise((resolve, reject) => {
+            const img = new Image();
+            img.onload = () => {
+                const canvas = document.createElement('canvas');
+                // Attention aux écrans Retina (devicePixelRatio)
+                const dpr = window.devicePixelRatio || 1;
+                const srcX = Math.floor(rect.left * dpr);
+                const srcY = Math.floor(rect.top * dpr);
+                const srcW = Math.max(1, Math.floor(rect.width * dpr));
+                const srcH = Math.max(1, Math.floor(rect.height * dpr));
+
+                // Resize intelligent : max 1400px sur le grand côté
+                const MAX_DIM = 1400;
+                const scale = Math.min(1, MAX_DIM / Math.max(srcW, srcH));
+                const outW = Math.max(1, Math.floor(srcW * scale));
+                const outH = Math.max(1, Math.floor(srcH * scale));
+
+                canvas.width = outW;
+                canvas.height = outH;
+
+                const ctx = canvas.getContext('2d');
+                ctx.imageSmoothingEnabled = true;
+                ctx.imageSmoothingQuality = 'high';
+
+                // Fond blanc (meilleur contraste sur bulles claires)
+                ctx.fillStyle = '#ffffff';
+                ctx.fillRect(0, 0, outW, outH);
+
+                ctx.drawImage(
+                    img,
+                    srcX, srcY, srcW, srcH,
+                    0, 0, outW, outH
+                );
+
+                // Qualité adaptative : petite zone → qualité plus haute (texte fin)
+                const area = outW * outH;
+                const quality = area < 120_000 ? 0.90 : area < 400_000 ? 0.82 : 0.75;
+                resolve(canvas.toDataURL('image/jpeg', quality));
+            };
+            img.onerror = reject;
+            img.src = base64Image;
+        });
+    }
+  
+    showTranslation(text, isLoading = false) {
+        const popup = this.shadowRoot.getElementById('translation-popup');
+        const content = this.shadowRoot.getElementById('translation-content');
+        popup.style.display = 'block';
+        content.innerText = text;
+        content.style.opacity = isLoading ? 0.5 : 1;
+    }
+  }

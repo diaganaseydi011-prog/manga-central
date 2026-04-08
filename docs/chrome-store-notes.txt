@@ -1,0 +1,55 @@
+================================================================================
+MangaCentral — textes à copier-coller (Chrome Web Store Developer Dashboard)
+================================================================================
+Remplacez l’URL de politique par l’adresse réelle après publication de
+docs/privacy-policy.html (ex. https://votrecompte.github.io/mangacentral-extension/privacy-policy.html).
+
+--------------------------------------------------------------------------------
+URL Politique de confidentialité (champ dédié)
+--------------------------------------------------------------------------------
+https://VOTRE-DOMAINE-OU-GITHUB-PAGES/privacy-policy.html
+
+--------------------------------------------------------------------------------
+Justification des permissions (champ "Permission justification" par permission)
+--------------------------------------------------------------------------------
+
+activeTab
+---------
+Permet d’agir sur l’onglet actif lorsque l’utilisateur ouvre le popup ou déclenche une action (capture visible pour OCR/traduction, lecture des métadonnées de la page de lecture). Aucun accès arrière-plan aux onglets sans action utilisateur associée.
+
+storage
+-------
+Stockage local de l’historique de lecture, de la bibliothèque, des paramètres (vitesse de défilement, sites personnalisés) et optionnellement de la clé API Gemini saisie par l’utilisateur. Tout reste sur l’appareil.
+
+scripting
+---------
+Injection ponctuelle depuis le service worker lorsque le script de contenu n’est pas disponible, pour lire le titre, le chapitre et les métadonnées open graph de la page — uniquement pour alimenter le suivi de lecture et l’interface.
+
+tabs
+----
+Consultation de l’onglet actif (identifiant, fenêtre) pour envoyer des messages au script de contenu, capturer l’onglet visible sur demande, et ouvrir des liens depuis le popup ou la recherche. Pas d’accès systématique à l’historique complet du navigateur.
+
+Host permission *://*/*
+----------------------
+L’extension affiche un panneau d’outils sur les pages où l’utilisateur lit des bandes dessinées en ligne ; les lecteurs et domaines sont très nombreux. L’accès à toutes les URLs est nécessaire pour injecter l’overlay et les parsers côté contenu sur ces sites. L’utilisateur voit clairement l’interface ; rien n’est masqué.
+
+--------------------------------------------------------------------------------
+Description courte (≤ 132 caractères) — alternative légèrement plus explicite
+--------------------------------------------------------------------------------
+Suivi de lecture, panneau d’outils sur les pages de lecture BD/manga/manhwa, recherche et options locales (clé API optionnelle pour traduction).
+
+--------------------------------------------------------------------------------
+Description détaillée (extrait / base — à adapter)
+--------------------------------------------------------------------------------
+MangaCentral aide à suivre votre progression de lecture et propose un panneau flottant sur les sites de lecture compatibles : titre et chapitre détectés, raccourcis (haut/bas de page, défilement automatique), recherche de titres via des API publiques (MangaDex, Jikan, AniList).
+
+La traduction assistée par image repose sur une clé API Google Gemini que vous configurez vous-même ; les images ne sont envoyées à Google que lorsque vous lancez l’action. Voir la politique de confidentialité pour le détail des données.
+
+L’extension ne remplace pas les sites de lecture ; elle ne fournit pas de contenu protégé. Respectez les droits d’auteur et les conditions d’utilisation des sites que vous consultez.
+
+--------------------------------------------------------------------------------
+Notes internes (listing — ne pas promouvoir le contenu illicite)
+--------------------------------------------------------------------------------
+Éviter dans le titre et les captures : "téléchargement gratuit de manga", "scan illimité", etc. Préférer : assistant de lecture, suivi, accessibilité, organisation.
+
+================================================================================
