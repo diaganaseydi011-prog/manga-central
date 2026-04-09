@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>MangaCentral – Assistant de lecture</title>
+  <meta name="description" content="MangaCentral est une extension Chrome qui aide au suivi de lecture de mangas/manhwas et propose des outils de confort, dont un panneau flottant et une traduction assistée (optionnelle).">
+  <style>
+    :root {
+      --bg: #050816;
+      --bg-card: #0b1020;
+      --accent: #00f5ff;
+      --accent-soft: rgba(0,245,255,0.16);
+      --text: #f9fafb;
+      --muted: #9ca3af;
+      --border: rgba(148,163,184,0.35);
+      --radius-lg: 18px;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: radial-gradient(circle at top left, #1b2845 0, #050816 45%, #020617 100%);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+    a { color: var(--accent); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    main {
+      max-width: 960px;
+      margin: 2.5rem auto 2rem;
+      padding: 0 1.25rem;
+      width: 100%;
+      flex: 1 0 auto;
+    }
+    header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1.5rem;
+      margin-bottom: 2.25rem;
+    }
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 0.9rem;
+    }
+    .logo {
+      width: 44px;
+      height: 44px;
+      border-radius: 14px;
+      background: radial-gradient(circle at 20% 20%, #22d3ee, #0ea5e9 40%, #0f172a 75%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 24px;
+      box-shadow: 0 12px 30px rgba(15,23,42,0.7);
+    }
+    .brand-title {
+      font-size: 1.4rem;
+      font-weight: 650;
+      letter-spacing: 0.03em;
+    }
+    .brand-sub {
+      font-size: 0.9rem;
+      color: var(--muted);
+      margin-top: 0.1rem;
+    }
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      border-radius: 999px;
+      padding: 0.35rem 0.85rem;
+      font-size: 0.78rem;
+      background: rgba(15,23,42,0.9);
+      border: 1px solid rgba(148,163,184,0.45);
+      color: var(--muted);
+    }
+    .pill-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 999px;
+      background: #4ade80;
+      box-shadow: 0 0 0 4px rgba(74,222,128,0.21);
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: minmax(0, 1.5fr) minmax(0, 1.2fr);
+      gap: 1.5rem;
+    }
+    @media (max-width: 800px) {
+      header { flex-direction: column; align-items: flex-start; }
+      .grid { grid-template-columns: minmax(0,1fr); }
+    }
+    .card {
+      background: radial-gradient(circle at top left, rgba(15,118,255,0.14), transparent 55%) , var(--bg-card);
+      border-radius: var(--radius-lg);
+      border: 1px solid var(--border);
+      padding: 1.25rem 1.35rem;
+      box-shadow:
+        0 24px 60px rgba(15,23,42,0.9),
+        0 0 0 1px rgba(15,23,42,0.9);
+    }
+    .card h2 {
+      font-size: 1.05rem;
+      margin: 0 0 0.75rem;
+    }
+    .card p {
+      font-size: 0.9rem;
+      color: var(--muted);
+      margin: 0.1rem 0 0.85rem;
+    }
+    ul.feature-list {
+      list-style: none;
+      padding: 0;
+      margin: 0.25rem 0 0;
+    }
+    .feature-list li {
+      display: flex;
+      align-items: flex-start;
+      gap: 0.45rem;
+      font-size: 0.9rem;
+      color: #e5e7eb;
+      margin-bottom: 0.45rem;
+    }
+    .feature-list li span.bullet {
+      font-size: 0.82rem;
+      margin-top: 0.18rem;
+      color: var(--accent);
+    }
+    .tagline {
+      font-size: 0.92rem;
+      color: #d1d5db;
+      margin-bottom: 0.9rem;
+    }
+    .cta-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.75rem;
+      margin-top: 0.6rem;
+    }
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.4rem;
+      border-radius: 999px;
+      padding: 0.55rem 1.15rem;
+      font-size: 0.86rem;
+      font-weight: 500;
+      border: 1px solid transparent;
+      text-decoration: none;
+      cursor: pointer;
+      transition: transform 0.14s ease, box-shadow 0.14s ease, background 0.14s ease, border-color 0.14s ease;
+    }
+    .btn-primary {
+      background: linear-gradient(135deg, #22d3ee, #0ea5e9);
+      color: #0b1120;
+      box-shadow: 0 12px 30px rgba(14,165,233,0.55);
+    }
+    .btn-primary:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 18px 40px rgba(14,165,233,0.75);
+    }
+    .btn-ghost {
+      background: rgba(15,23,42,0.9);
+      color: var(--text);
+      border-color: rgba(148,163,184,0.55);
+    }
+    .btn-ghost:hover {
+      background: rgba(15,23,42,1);
+      border-color: var(--accent);
+    }
+    .section-title {
+      font-size: 0.95rem;
+      text-transform: uppercase;
+      letter-spacing: 0.14em;
+      color: var(--muted);
+      margin: 2.25rem 0 0.75rem;
+    }
+    .two-cols {
+      display: grid;
+      grid-template-columns: minmax(0,1.3fr) minmax(0,1.2fr);
+      gap: 1.25rem;
+    }
+    @media (max-width: 780px) {
+      .two-cols { grid-template-columns: minmax(0,1fr); }
+    }
+    .subcard {
+      background: rgba(15,23,42,0.9);
+      border-radius: 14px;
+      border: 1px solid rgba(148,163,184,0.5);
+      padding: 1rem 1.1rem;
+      font-size: 0.9rem;
+      color: #e5e7eb;
+    }
+    .subcard h3 {
+      font-size: 0.95rem;
+      margin: 0 0 0.55rem;
+    }
+    .subcard ul {
+      margin: 0.25rem 0 0;
+      padding-left: 1.05rem;
+    }
+    .subcard li {
+      margin-bottom: 0.35rem;
+      color: #d1d5db;
+    }
+    footer {
+      padding: 1.4rem 1.25rem 2rem;
+      font-size: 0.8rem;
+      color: var(--muted);
+      text-align: center;
+    }
+    footer a { color: var(--accent); }
+  </style>
+</head>
+<body>
+  <main>
+    <header>
+      <div class="brand">
+        <div class="logo" aria-hidden="true">📚</div>
+        <div>
+          <div class="brand-title">MangaCentral</div>
+          <div class="brand-sub">Assistant de lecture pour manga / manhwa</div>
+        </div>
+      </div>
+      <div class="pill">
+        <span class="pill-dot"></span>
+        <span>Extension Chrome — suivi local &amp; outils de confort</span>
+      </div>
+    </header>
+
+    <section class="grid">
+      <article class="card">
+        <h2>Un tableau de bord pour vos lectures</h2>
+        <p class="tagline">
+          MangaCentral ne fournit pas de scans : il organise ce que vous lisez déjà, directement dans le navigateur.
+        </p>
+        <ul class="feature-list">
+          <li><span class="bullet">•</span><span><strong>Bibliothèque</strong> : ajoutez vos titres avec URL, couverture, statut et dernier chapitre lu.</span></li>
+          <li><span class="bullet">•</span><span><strong>Historique</strong> : les chapitres visités sur des sites compatibles sont mémorisés localement.</span></li>
+          <li><span class="bullet">•</span><span><strong>Recherche</strong> : trouvez des titres via MangaDex, Jikan ou AniList, sans compte obligatoire.</span></li>
+          <li><span class="bullet">•</span><span><strong>Panneau flottant</strong> sur la page : navigation haut/bas, auto-scroll et outil de sélection de zone.</span></li>
+        </ul>
+        <div class="cta-row">
+          <a class="btn btn-primary" href="https://chrome.google.com/webstore" target="_blank" rel="noopener">
+            <span>Ouvrir la fiche Chrome Web Store</span>
+          </a>
+          <a class="btn btn-ghost" href="https://github.com/diaganaseydi011-prog/manga-central" target="_blank" rel="noopener">
+            <span>Voir la documentation technique</span>
+          </a>
+        </div>
+      </article>
+
+      <article class="card">
+        <h2>Traduction assistée (optionnelle)</h2>
+        <p>
+          Si vous le souhaitez, vous pouvez configurer une clé API Google&nbsp;Gemini pour activer la
+          traduction assistée d’une zone sélectionnée (OCR + traduction).
+        </p>
+        <ul class="feature-list">
+          <li><span class="bullet">•</span><span><strong>Action explicite</strong> : rien n’est envoyé sans que vous cliquiez sur l’outil OCR / Traduire.</span></li>
+          <li><span class="bullet">•</span><span><strong>Clé locale</strong> : la clé API saisie reste stockée dans <code>chrome.storage.local</code> sur votre appareil.</span></li>
+          <li><span class="bullet">•</span><span><strong>Contrôle</strong> : vous pouvez supprimer la clé ou désinstaller l’extension à tout moment.</span></li>
+        </ul>
+        <p style="font-size:0.85rem;color:var(--muted);margin-top:0.8rem;">
+          Conseil : pour de meilleures traductions, sélectionnez une zone qui contient uniquement la bulle ou le texte à traduire.
+        </p>
+      </article>
+    </section>
+
+    <h2 class="section-title">Support &amp; confidentialité</h2>
+    <section class="two-cols">
+      <article class="subcard">
+        <h3>Assistance &amp; retours</h3>
+        <p>
+          Un problème, une idée d’amélioration ou une question sur le fonctionnement de l’extension&nbsp;?
+        </p>
+        <ul>
+          <li>Ouvrez un ticket sur GitHub :<br>
+            <a href="https://github.com/diaganaseydi011-prog/manga-central/issues" target="_blank" rel="noopener">
+              https://github.com/diaganaseydi011-prog/manga-central/issues
+            </a>
+          </li>
+          <li>Ou contactez l’éditeur :<br>
+            <a href="mailto:diaganaseydi011@gmail.com">diaganaseydi011@gmail.com</a>
+          </li>
+        </ul>
+      </article>
+
+      <article class="subcard">
+        <h3>Données &amp; respect des sites</h3>
+        <ul>
+          <li>Historique, bibliothèque et paramètres restent stockés localement dans votre navigateur.</li>
+          <li>L’extension ne propose pas de téléchargement de chapitres et ne contourne pas les systèmes des sites visités.</li>
+          <li>Merci de respecter les droits d’auteur et les conditions d’utilisation de chaque site que vous consultez.</li>
+          <li>Voir la politique de confidentialité complète :<br>
+            <a href="./privacy-policy.html">Politique de confidentialité MangaCentral</a>
+          </li>
+        </ul>
+      </article>
+    </section>
+  </main>
+
+  <footer>
+    MangaCentral &mdash; extension non officielle, fournie "en l’état".<br>
+    Cette page est destinée à servir d’URL d’assistance et d’information pour le Chrome Web Store.
+  </footer>
+</body>
+</html>
+
