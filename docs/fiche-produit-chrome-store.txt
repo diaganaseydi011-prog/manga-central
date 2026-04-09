@@ -1,0 +1,132 @@
+================================================================================
+MANGACENTRAL — FICHE PRODUIT DÉTAILLÉE (Chrome Web Store)
+À copier-coller dans le Developer Dashboard. Langue : français.
+================================================================================
+
+--------------------------------------------------------------------------------
+1. INFORMATIONS GÉNÉRALES (à renseigner dans le formulaire)
+--------------------------------------------------------------------------------
+
+Nom affiché (tel que dans manifest)     MangaCentral
+Nom public (store)                      MangaCentral
+                                        (éviter : "MangaDex", noms de marques tierces)
+
+Catégorie suggérée                      Productivité ou Outils (selon les choix proposés)
+Langue principale du listing            Français
+Site web support (optionnel)            https://github.com/diaganaseydi011-prog/manga-central
+
+Politique de confidentialité (URL)      https://diaganaseydi011-prog.github.io/manga-central/privacy-policy.html
+
+
+--------------------------------------------------------------------------------
+2. DESCRIPTION COURTE (résumé — limite ~132 caractères)
+--------------------------------------------------------------------------------
+
+Option A (128 caractères) :
+Suivi de lecture manga/manhwa, panneau d’outils sur la page, bibliothèque, recherche et traduction optionnelle (Gemini).
+
+Option B (124 caractères) :
+Assistant de lecture BD : historique, overlay (scroll, navigation), découverte MangaDex/Jikan/AniList, traduction optionnelle.
+
+Option C (plus technique, 118 car.) :
+Centralisation et suivi de lecture pour mangas/manhwas : outils sur la page, recherche et clé API Gemini optionnelle.
+
+
+--------------------------------------------------------------------------------
+3. DESCRIPTION DÉTAILLÉE (description complète du listing)
+--------------------------------------------------------------------------------
+
+(Copier le bloc ci-dessous tel quel, ou adapter légèrement.)
+
+---
+
+MangaCentral est un assistant de lecture pour bandes dessinées en ligne (manga, manhwa, webtoon). Il ne remplace pas les sites que vous utilisez : il ajoute des outils et un suivi local sur votre navigateur.
+
+**Tableau de bord (icône de l’extension)**
+• Vue d’ensemble de votre activité et accès rapide aux sections.
+• **Bibliothèque** : liste des titres suivis, filtres, tri, ajout manuel (titre, URL, statut, couverture).
+• **Découverte** : recherche de titres via des bases publiques (MangaDex, Jikan, AniList) ; si vous configurez une clé API Google Gemini, une suggestion de lien peut compléter les résultats.
+• **Historique** : dernières lectures détectées sur les pages compatibles.
+• **Paramètres** : vitesse de défilement par défaut, clé API Gemini (optionnelle), langue cible pour la traduction, sites personnalisés (sélecteurs CSS pour adapter l’extension à un lecteur non listé par défaut).
+
+**Sur la page de lecture**
+Lorsqu’un chapitre est reconnu, un panneau flottant apparaît : titre, numéro de chapitre, raccourcis haut/bas de page, défilement automatique réglable, et outil de **sélection de zone** pour envoyer une capture à l’API Gemini (traduction / transcription du texte visible dans la zone), uniquement si vous avez saisi une clé et que vous lancez l’action.
+
+**Données et confidentialité**
+Les données de bibliothèque et d’historique sont stockées **localement** sur votre appareil. La clé Gemini est stockée localement par vos soins. Les appels à Google ne sont effectués que lorsque vous utilisez la traduction. Détail complet : voir la politique de confidentialité liée ci-dessous.
+
+**Mention importante**
+Respectez les droits d’auteur et les conditions d’utilisation des sites que vous consultez. MangaCentral ne fournit pas de contenu protégé et ne constitue pas un service de téléchargement de chapitres.
+
+**Contact**
+Pour toute question relative à la politique de confidentialité : diaganaseydi011@gmail.com
+
+---
+
+
+--------------------------------------------------------------------------------
+4. « SINGLE PURPOSE » / OBJECTIF (si le dashboard demande une phrase)
+--------------------------------------------------------------------------------
+
+Aider l’utilisateur à organiser et suivre sa lecture de bandes dessinées en ligne et à utiliser des outils d’assistance (navigation, défilement, recherche de titres, traduction optionnelle) sur les pages où il lit.
+
+
+--------------------------------------------------------------------------------
+5. JUSTIFICATIONS DE PERMISSIONS (rappel — champs séparés)
+--------------------------------------------------------------------------------
+
+Voir le fichier chrome-store-notes.txt pour les textes par permission
+(activeTab, storage, scripting, tabs, host *://*/*).
+
+
+--------------------------------------------------------------------------------
+6. DÉCLARATION DES DONNÉES (Data safety — lignes directrices)
+--------------------------------------------------------------------------------
+
+• Données collectées côté utilisateur : historique de lecture et bibliothèque (titres, chapitres, URL, couvertures éventuelles) — stockage **local** sur l’appareil.
+• Données traitées par des tiers lorsque l’utilisateur agit : Google (API Gemini) pour traduction/capture si clé fournie ; MangaDex, Jikan, AniList pour métadonnées/recherche.
+• Pas de vente de données personnelles (aligné sur la politique de confidentialité hébergée).
+• Chiffrement : communications HTTPS vers les services ; stockage navigateur standard pour l’extension.
+
+
+--------------------------------------------------------------------------------
+7. IDÉES DE CAPTURES D’ÉCRAN (pour le store)
+--------------------------------------------------------------------------------
+
+1. Popup — onglet Dashboard ou Bibliothèque (interface visible).
+2. Popup — onglet Découverte avec une recherche.
+3. Page web — panneau flottant MangaCentral sur une page de lecture (overlay visible).
+4. Paramètres — champ clé API masqué / langue (sans afficher de clé réelle).
+5. (Optionnel) Historique ou détail bibliothèque.
+
+Éviter sur les captures : slogans « tout gratuit », « scans illimités », ou contenu explicite non autorisé par les règles du store.
+
+
+--------------------------------------------------------------------------------
+8. NOTES SEO / SOUS-TITRE (si champ disponible)
+--------------------------------------------------------------------------------
+
+Sous-titre possible : Suivi de lecture et outils pour manga & manhwa
+
+Mots-clés prudents (description uniquement, pas de bourrage) : lecture en ligne, bibliothèque, MangaDex, suivi de chapitres, assistant de lecture.
+
+
+--------------------------------------------------------------------------------
+9. VERSION & PACKAGE
+--------------------------------------------------------------------------------
+
+Version manifest actuelle : 1.0.0 (incrémenter à chaque mise à jour publiée)
+Avant zip : npm run build:content
+Zip : dossier extension sans node_modules
+
+
+--------------------------------------------------------------------------------
+10. SUPPORT UTILISATEUR (texte court pour le store si demandé)
+--------------------------------------------------------------------------------
+
+Questions sur l’extension ou la confidentialité : diaganaseydi011@gmail.com
+Dépôt source : https://github.com/diaganaseydi011-prog/manga-central
+
+================================================================================
+Fin de la fiche — à mettre à jour si les fonctionnalités évoluent.
+================================================================================
