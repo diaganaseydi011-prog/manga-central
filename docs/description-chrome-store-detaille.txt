@@ -1,0 +1,31 @@
+================================================================================
+DESCRIPTION DÉTAILLÉE — Chrome Web Store (coller dans le dashboard)
+Langue : français · ~2000 caractères (limite store souvent 16 000)
+================================================================================
+
+MangaCentral est un assistant de lecture pour bandes dessinées en ligne (manga, manhwa, webtoon). Il ne remplace pas les sites que vous utilisez : il ajoute des outils et un suivi local sur votre navigateur.
+
+TABLEAU DE BORD (icône de l’extension)
+• Vue d’ensemble de votre activité et accès rapide aux sections.
+• Bibliothèque : liste des titres suivis, filtres, tri, ajout manuel (titre, URL, statut, couverture).
+• Découverte : recherche de titres via des bases publiques (MangaDex, Jikan, AniList) ; si vous configurez une clé API Google Gemini, une suggestion de lien peut compléter les résultats.
+• Historique : dernières lectures détectées sur les pages compatibles.
+• Paramètres : vitesse de défilement par défaut, clé API Gemini (optionnelle), langue cible pour la traduction, sites personnalisés (sélecteurs CSS pour adapter l’extension à un lecteur non listé par défaut).
+
+SUR LA PAGE DE LECTURE
+Lorsqu’un chapitre est reconnu, un panneau flottant apparaît : titre, numéro de chapitre, raccourcis haut/bas de page, défilement automatique réglable, et outil de sélection de zone pour envoyer une capture à l’API Gemini (traduction / transcription du texte visible dans la zone), uniquement si vous avez saisi une clé et que vous lancez l’action.
+
+DONNÉES ET CONFIDENTIALITÉ
+Les données de bibliothèque et d’historique sont stockées localement sur votre appareil. La clé Gemini est stockée localement par vos soins. Les appels à Google ne sont effectués que lorsque vous utilisez la traduction. Politique de confidentialité : https://diaganaseydi011-prog.github.io/manga-central/privacy-policy.html
+
+MENTION IMPORTANTE
+Respectez les droits d’auteur et les conditions d’utilisation des sites que vous consultez. MangaCentral ne fournit pas de contenu protégé et ne constitue pas un service de téléchargement de chapitres.
+
+CONTACT
+Questions sur la confidentialité : diaganaseydi011@gmail.com
+Source : https://github.com/diaganaseydi011-prog/manga-central
+
+================================================================================
+RÉSUMÉ COURT (séparé — limite ~132 caractères dans le dashboard)
+================================================================================
+Suivi de lecture manga/manhwa, panneau d’outils sur la page, bibliothèque, recherche et traduction optionnelle (Gemini).
