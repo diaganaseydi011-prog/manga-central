@@ -51,6 +51,37 @@ function getWorkKey(metaTitle, url) {
   return titleKey ? `title:${titleKey}` : '';
 }
 
+/** Identifiant stable pour l'historique (UTF-8 → base64, sans utiliser btoa). */
+function idFromTitleAndChapter(title, chapter) {
+  const raw = String(title || '') + '\0' + String(chapter ?? '');
+  const bytes = new TextEncoder().encode(raw);
+  const base64abc = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
+  let result = '';
+  let i;
+  for (i = 0; i + 2 < bytes.length; i += 3) {
+    const n = (bytes[i] << 16) | (bytes[i + 1] << 8) | bytes[i + 2];
+    result +=
+      base64abc[(n >>> 18) & 63] +
+      base64abc[(n >>> 12) & 63] +
+      base64abc[(n >>> 6) & 63] +
+      base64abc[n & 63];
+  }
+  if (i < bytes.length) {
+    let n = bytes[i] << 16;
+    let pad = '==';
+    if (i + 1 < bytes.length) {
+      n |= bytes[i + 1] << 8;
+      pad = '=';
+    }
+    result +=
+      base64abc[(n >>> 18) & 63] +
+      base64abc[(n >>> 12) & 63] +
+      (pad === '==' ? '=' : base64abc[(n >>> 6) & 63]) +
+      pad;
+  }
+  return result;
+}
+
 // 1. Gestion de l'installation
 chrome.runtime.onInstalled.addListener(() => {
   console.log('MangaCentral installé.');
@@ -191,21 +222,49 @@ function handleGetCurrentPageMeta(sendResponse) {
 // --- Fonctions Logiques ---
 
 function handleCaptureTab(sender, sendResponse) {
-    // Fenêtre de l'onglet qui a demandé la capture (évite erreurs de permission/contexte)
-    const windowId = (sender && sender.tab && sender.tab.windowId) != null ? sender.tab.windowId : null;
-    chrome.tabs.captureVisibleTab(windowId, { format: 'jpeg', quality: 80 }, (dataUrl) => {
-        if (chrome.runtime.lastError) {
-            const msg = chrome.runtime.lastError.message || '';
-            console.error("Capture failed:", msg);
-            // Message utilisateur si c'est un problème de permission
-            const userMsg = /activeTab|all_urls|permission/i.test(msg)
-                ? "Permission de capture manquante. Ouvrez une fois l'icône MangaCentral (popup), puis réessayez. Si le problème persiste, rechargez l'extension (chrome://extensions)."
-                : msg;
-            sendResponse({ error: userMsg });
-        } else {
-            sendResponse({ dataUrl: dataUrl });
-        }
-    });
+  const opts = { format: 'jpeg', quality: 80 };
+  const onDone = (dataUrl) => {
+    const lastErr = (typeof chrome !== 'undefined' && chrome && chrome.runtime) ? chrome.runtime.lastError : null;
+    if (lastErr) {
+      const msg =
+        (lastErr && typeof lastErr.message === 'string' && lastErr.message) ||
+        (typeof lastErr === 'string' && lastErr) ||
+        '';
+      console.error('Capture failed:', msg);
+      const userMsg = /activeTab|all_urls|permission/i.test(msg)
+        ? "Permission de capture manquante. Ouvrez une fois l'icône MangaCentral (popup), puis réessayez. Si le problème persiste, rechargez l'extension (chrome://extensions)."
+        : msg;
+      sendResponse({ error: userMsg });
+    } else {
+      if (!dataUrl || typeof dataUrl !== 'string') {
+        sendResponse({ error: "Impossible de capturer l'écran" });
+        return;
+      }
+      sendResponse({ dataUrl });
+    }
+  };
+
+  const runWithWindowId = (windowId) => {
+    if (typeof windowId === 'number') {
+      chrome.tabs.captureVisibleTab(windowId, opts, onDone);
+    } else {
+      chrome.tabs.captureVisibleTab(opts, onDone);
+    }
+  };
+
+  const tab = sender && sender.tab;
+  let windowId = tab && typeof tab.windowId === 'number' ? tab.windowId : undefined;
+  if (windowId !== undefined) {
+    runWithWindowId(windowId);
+    return;
+  }
+
+  // Certains contextes n’envoient pas sender.tab : utiliser l’onglet actif de la fenêtre courante.
+  chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+    const t = tabs && tabs[0];
+    windowId = t && typeof t.windowId === 'number' ? t.windowId : undefined;
+    runWithWindowId(windowId);
+  });
 }
 
 function handleChapterDetected(meta, sender) {
@@ -217,7 +276,7 @@ function handleChapterDetected(meta, sender) {
     ...meta,
     url,
     lastRead: now,
-    id: btoa(meta.title + meta.chapter)
+    id: idFromTitleAndChapter(meta.title, meta.chapter)
   };
 
   const workKey = getWorkKey(meta.title, url);
@@ -324,42 +383,90 @@ async function handleTranslation(payload, sendResponse) {
     base64Data = match[2];
   }
 
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent?key=${encodeURIComponent(apiKey)}`;
+  const buildUrl = (model) =>
+    `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${encodeURIComponent(apiKey)}`;
+  const modelsToTry = [
+    // Le preview peut être saturé ; on essaie ensuite des modèles plus stables.
+    'gemini-3-flash-preview',
+    'gemini-2.0-flash',
+    'gemini-1.5-flash'
+  ];
 
-  const prompt = `This image is a panel or bubble from a manga/comic. Do the following:
-1. Extract ALL text visible in the image (OCR). Preserve line breaks and order.
-2. Translate the extracted text into ${langLabel}.
-3. Return ONLY the translated text, nothing else. No explanations, no labels. If the image has no text, reply with exactly: (aucun texte)`;
+  const prompt = `You are doing OCR + translation from an image (manga/comic speech bubbles).
+Rules:
+- First, read ALL text in the image (OCR). Preserve line breaks and reading order.
+- Then translate it into ${langLabel}.
+- Output ONLY the translated text. No quotes, no labels, no markdown.
+- Do NOT truncate. If the text is long, still include everything.
+- If there is no readable text, output exactly: (aucun texte)`;
 
   try {
-    const controller = new AbortController();
-    const timeoutMs = 15000;
-    const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
-
-    const res = await fetch(url, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      signal: controller.signal,
-      body: JSON.stringify({
-        contents: [{
-          parts: [
-            { text: prompt },
-            {
-              inlineData: {
-                mimeType,
-                data: base64Data
-              }
+    const doRequest = async (model) => {
+      const controller = new AbortController();
+      const timeoutMs = 25000;
+      const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+      try {
+        const res = await fetch(buildUrl(model), {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          signal: controller.signal,
+          body: JSON.stringify({
+            contents: [{
+              parts: [
+                { text: prompt },
+                {
+                  inlineData: {
+                    mimeType,
+                    data: base64Data
+                  }
+                }
+              ]
+            }],
+            generationConfig: {
+              // Bulles longues → éviter les sorties tronquées
+              maxOutputTokens: 1536,
+              temperature: 0.2
             }
-          ]
-        }],
-        generationConfig: {
-          maxOutputTokens: 512,
-          temperature: 0.2
-        }
-      })
-    });
+          })
+        });
+        return res;
+      } finally {
+        clearTimeout(timeoutId);
+      }
+    };
 
-    clearTimeout(timeoutId);
+    const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+    let res = null;
+    let lastErrMsg = '';
+    for (let mi = 0; mi < modelsToTry.length; mi++) {
+      const model = modelsToTry[mi];
+      // 2 tentatives par modèle (backoff léger)
+      for (let attempt = 1; attempt <= 2; attempt++) {
+        res = await doRequest(model);
+        if (res.ok) break;
+        const errBody = await res.text().catch(() => '');
+        lastErrMsg = '';
+        try {
+          const errJson = errBody ? JSON.parse(errBody) : null;
+          const err = errJson && errJson.error ? errJson.error : {};
+          lastErrMsg = (err && typeof err.message === 'string') ? err.message : '';
+        } catch (_) {}
+
+        const msgLower = (lastErrMsg || '').toLowerCase();
+        const highDemand =
+          res.status === 503 ||
+          /high demand|temporar|spikes in demand|overloaded|try again later/i.test(lastErrMsg || '') ||
+          /backend error/i.test(msgLower);
+
+        const transient = highDemand || res.status === 500 || res.status === 502 || res.status === 504;
+        if (!transient) break;
+        await sleep(attempt === 1 ? 800 : 1600);
+      }
+      if (res && res.ok) break;
+      // petit délai avant de changer de modèle
+      await sleep(250);
+    }
 
     if (!res.ok) {
       const errBody = await res.text();
@@ -369,7 +476,17 @@ async function handleTranslation(payload, sendResponse) {
         const err = errJson.error || {};
         if (err.message) errMsg = err.message;
         const status = (err.status || '').toString();
-        if (res.status === 429 || status === 'RESOURCE_EXHAUSTED' || /quota/i.test(errMsg || '')) {
+        const highDemandMsg =
+          /high demand|spikes in demand|try again later|overloaded/i.test(errMsg || '') ||
+          res.status === 503;
+        if (highDemandMsg) {
+          sendResponse({
+            translation:
+              "Gemini est temporairement surchargé (forte demande).\n\nRéessayez dans 10–60 secondes. Astuce : sélectionnez une zone plus petite pour accélérer."
+          });
+          return;
+        }
+        if (res.status === 429 || status === 'RESOURCE_EXHAUSTED' || /quota|rate limit/i.test(errMsg || '')) {
           sendResponse({
             translation:
               'Limite ou quota Gemini atteint.\n\nRéduisez la fréquence des traductions ou vérifiez vos quotas sur la console Google.'
@@ -377,27 +494,50 @@ async function handleTranslation(payload, sendResponse) {
           return;
         }
       } catch (_) {}
-      sendResponse({ translation: 'Erreur ' + errMsg + '\n\nVérifiez votre clé API et les quotas Gemini.' });
+      // Si on a un message d'erreur plus précis des tentatives précédentes, l'afficher.
+      const finalMsg = (lastErrMsg && lastErrMsg.trim()) ? lastErrMsg.trim() : errMsg;
+      sendResponse({ translation: 'Erreur ' + finalMsg });
       return;
     }
 
     const data = await res.json();
-    const text = data?.candidates?.[0]?.content?.parts?.[0]?.text;
+    const parts = data?.candidates?.[0]?.content?.parts;
+    const text = Array.isArray(parts)
+      ? parts.map(p => (p && typeof p.text === 'string' ? p.text : '')).join('').trim()
+      : data?.candidates?.[0]?.content?.parts?.[0]?.text;
     if (text && typeof text === 'string') {
-      sendResponse({ translation: text.trim() });
+      // Nettoyage léger si le modèle ajoute un préfixe (rare)
+      const cleaned = text
+        .replace(/^\s*(translated|translation)\s*:\s*/i, '')
+        .trim();
+      sendResponse({ translation: cleaned });
     } else {
       sendResponse({ translation: "Aucun texte retourné par Gemini. L’image est peut-être illisible ou vide." });
     }
   } catch (e) {
     console.error('Traduction Gemini:', e);
-    if (e && (e.name === 'AbortError' || String(e).includes('AbortError'))) {
+    const errName = e && typeof e.name === 'string' ? e.name : '';
+    const errMessage = e && typeof e.message === 'string' ? e.message : '';
+    const errString = (() => {
+      if (errName || errMessage) return `${errName}${errMessage ? ': ' + errMessage : ''}`.trim();
+      try {
+        return String(e);
+      } catch (_) {
+        return 'unknown_error';
+      }
+    })();
+
+    if (errName === 'AbortError' || /AbortError/i.test(errString)) {
       sendResponse({
         translation: "La traduction met trop de temps (timeout).\n\nEssayez de sélectionner une zone plus petite, ou réessayez."
       });
       return;
     }
     sendResponse({
-      translation: "Erreur réseau ou API : " + (e.message || String(e)) + "\n\nVérifiez votre connexion et la clé API Gemini."
+      translation:
+        "Erreur réseau ou API : " +
+        (errString || 'erreur inconnue') +
+        "\n\nVérifiez votre connexion et la clé API Gemini."
     });
   }
 }

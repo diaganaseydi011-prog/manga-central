@@ -625,13 +625,15 @@ class PopupManager {
     
     container.innerHTML = filtered.map(manga => {
       const referer = manga && manga.url ? this._escapeHtml(String(manga.url)) : '';
+      const urlDomain = this._getDomainFromUrl(manga && manga.url);
+      const sourceLabel = manga.source || urlDomain || 'Source inconnue';
       return `
       <div class="library-item" data-id="${manga.id}">
         <img src="${(manga.cover && manga.cover.trim()) ? manga.cover : COVER_PLACEHOLDER}" data-mc-referer="${referer}" class="library-cover" alt="${manga.title}">
         <div class="library-details">
           <div>
             <div class="library-title">${manga.title}</div>
-            <div class="library-meta">${manga.source || 'Source inconnue'}</div>
+            <div class="library-meta">${sourceLabel}</div>
             <span class="library-status ${manga.status}">${this.getStatusLabel(manga.status)}</span>
           </div>
           <div class="library-actions">
@@ -864,6 +866,16 @@ class PopupManager {
         }
       });
     });
+  }
+
+  _getDomainFromUrl(url) {
+    if (!url || !String(url).trim()) return '';
+    try {
+      const u = new URL(String(url).trim());
+      return u.hostname.replace(/^www\./, '');
+    } catch (_) {
+      return '';
+    }
   }
 
   _escapeHtml(text) {

@@ -65,6 +65,12 @@ export default class UIManager {
           <div class="mc-speed-control" id="speed-control" style="display:none;">
             <input type="range" min="1" max="10" value="2" id="range-speed">
           </div>
+          <div class="mc-ui-tweaks" id="ui-tweaks">
+            <div class="mc-ui-row">
+              <span class="mc-ui-label">Taille boutons</span>
+              <input type="range" min="80" max="140" value="100" id="range-btnscale" title="Taille des boutons">
+            </div>
+          </div>
         </div>
         <div id="translation-popup" class="mc-translation-popup" style="display:none;">
           <div class="mc-translation-header"><span>Traduction</span><button id="close-trans">×</button></div>
@@ -78,6 +84,7 @@ export default class UIManager {
       this._setupDockedPanel();
       this._setupDraggablePanel();
       this._setupResizablePanel();
+      this._setupUiTweaks();
     }
 
     /**
@@ -149,6 +156,27 @@ export default class UIManager {
       // Global Escape to cancel crop
       document.addEventListener('keydown', (e) => {
           if (e.key === 'Escape' && this.cropActive) this.stopCropMode();
+      });
+    }
+
+    async _setupUiTweaks() {
+      if (!this.shadowRoot) return;
+      const panel = this.shadowRoot.querySelector('.mc-floating-panel');
+      const range = this.shadowRoot.getElementById('range-btnscale');
+      if (!panel || !range) return;
+
+      const { settings = {} } = await chrome.storage.local.get('settings');
+      const saved = Number(settings.uiButtonScale);
+      const percent = Number.isFinite(saved) ? Math.max(80, Math.min(140, saved)) : 100;
+      range.value = String(percent);
+      panel.style.setProperty('--mc-btn-scale', String(percent / 100));
+
+      range.addEventListener('input', async (e) => {
+        const v = parseInt(e.target.value, 10);
+        const pct = Number.isFinite(v) ? Math.max(80, Math.min(140, v)) : 100;
+        panel.style.setProperty('--mc-btn-scale', String(pct / 100));
+        const { settings: cur = {} } = await chrome.storage.local.get('settings');
+        await chrome.storage.local.set({ settings: { ...cur, uiButtonScale: pct } });
       });
     }
 
@@ -871,16 +899,25 @@ export default class UIManager {
                 const canvas = document.createElement('canvas');
                 // Attention aux écrans Retina (devicePixelRatio)
                 const dpr = window.devicePixelRatio || 1;
-                const srcX = Math.floor(rect.left * dpr);
-                const srcY = Math.floor(rect.top * dpr);
-                const srcW = Math.max(1, Math.floor(rect.width * dpr));
-                const srcH = Math.max(1, Math.floor(rect.height * dpr));
+                // Petite marge autour de la sélection (évite de couper des glyphes / furigana)
+                const pad = Math.max(4, Math.round(8 * dpr));
+                const rawX = Math.floor(rect.left * dpr) - pad;
+                const rawY = Math.floor(rect.top * dpr) - pad;
+                const rawW = Math.max(1, Math.floor(rect.width * dpr) + pad * 2);
+                const rawH = Math.max(1, Math.floor(rect.height * dpr) + pad * 2);
+                const srcX = Math.max(0, rawX);
+                const srcY = Math.max(0, rawY);
+                const srcW = Math.max(1, Math.min(rawW, img.naturalWidth - srcX));
+                const srcH = Math.max(1, Math.min(rawH, img.naturalHeight - srcY));
 
-                // Resize intelligent : max 1400px sur le grand côté
-                const MAX_DIM = 1400;
-                const scale = Math.min(1, MAX_DIM / Math.max(srcW, srcH));
-                const outW = Math.max(1, Math.floor(srcW * scale));
-                const outH = Math.max(1, Math.floor(srcH * scale));
+                // Resize intelligent pour OCR :
+                // - On autorise un upscaling modéré sur petites zones (texte fin)
+                // - On limite le grand côté pour éviter les payloads énormes
+                const MAX_DIM = 2000;
+                const targetScale = MAX_DIM / Math.max(srcW, srcH);
+                const scale = Math.min(2.5, Math.max(0.5, targetScale)); // 0.5..2.5
+                const outW = Math.max(1, Math.round(srcW * scale));
+                const outH = Math.max(1, Math.round(srcH * scale));
 
                 canvas.width = outW;
                 canvas.height = outH;
@@ -893,16 +930,44 @@ export default class UIManager {
                 ctx.fillStyle = '#ffffff';
                 ctx.fillRect(0, 0, outW, outH);
 
+                // Prétraitement simple (OCR) : grayscale + contraste au rendu
+                if ('filter' in ctx) {
+                    ctx.filter = 'grayscale(100%) contrast(160%)';
+                }
                 ctx.drawImage(
                     img,
                     srcX, srcY, srcW, srcH,
                     0, 0, outW, outH
                 );
+                if ('filter' in ctx) ctx.filter = 'none';
 
-                // Qualité adaptative : petite zone → qualité plus haute (texte fin)
-                const area = outW * outH;
-                const quality = area < 120_000 ? 0.90 : area < 400_000 ? 0.82 : 0.75;
-                resolve(canvas.toDataURL('image/jpeg', quality));
+                // Binarisation légère (réduit le bruit + améliore la lisibilité)
+                try {
+                    const imageData = ctx.getImageData(0, 0, outW, outH);
+                    const data = imageData.data;
+                    let sum = 0;
+                    const n = outW * outH;
+                    for (let i = 0; i < data.length; i += 4) {
+                        // luminance
+                        sum += (0.2126 * data[i] + 0.7152 * data[i + 1] + 0.0722 * data[i + 2]);
+                    }
+                    const mean = sum / Math.max(1, n);
+                    const thresh = Math.max(60, Math.min(200, mean * 0.92));
+                    for (let i = 0; i < data.length; i += 4) {
+                        const lum = (0.2126 * data[i] + 0.7152 * data[i + 1] + 0.0722 * data[i + 2]);
+                        const v = lum < thresh ? 0 : 255;
+                        data[i] = v;
+                        data[i + 1] = v;
+                        data[i + 2] = v;
+                        data[i + 3] = 255;
+                    }
+                    ctx.putImageData(imageData, 0, 0);
+                } catch (_) {
+                    // getImageData peut échouer sur certains contextes ; dans ce cas, garder l'image rendue
+                }
+
+                // PNG évite les artefacts JPEG (souvent meilleurs pour OCR)
+                resolve(canvas.toDataURL('image/png'));
             };
             img.onerror = reject;
             img.src = base64Image;

@@ -4,7 +4,7 @@
   "version": "1.0.0",
   "description": "Centralisation, suivi de lecture et outils d'assistance pour mangas/manhwas.",
   "permissions": ["activeTab", "storage", "scripting", "tabs"],
-  "host_permissions": ["*://*/*"],
+  "host_permissions": ["<all_urls>"],
   "action": {
     "default_popup": "popup/popup.html",
     "default_title": "MangaCentral Dashboard"
