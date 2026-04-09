@@ -216,8 +216,7 @@ Ce projet est sous licence **MIT** - voir le fichier [LICENSE](LICENSE) pour plu
 
 ## 📞 Contact
 
-- **Issues** : [GitHub Issues](https://github.com/VOTRE_USERNAME/mangacentral/issues)
-- **Discussions** : [GitHub Discussions](https://github.com/VOTRE_USERNAME/mangacentral/discussions)
+- **Issues** : [GitHub Issues](https://github.com/diaganaseydi011-prog/manga-central/issues)
 
 ---
 

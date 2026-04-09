@@ -1,13 +1,13 @@
 ================================================================================
 MangaCentral — textes à copier-coller (Chrome Web Store Developer Dashboard)
 ================================================================================
-Remplacez l’URL de politique par l’adresse réelle après publication de
-docs/privacy-policy.html (ex. https://votrecompte.github.io/mangacentral-extension/privacy-policy.html).
+URL après activation de GitHub Pages (branche main, dossier /docs) :
+https://diaganaseydi011-prog.github.io/manga-central/privacy-policy.html
 
 --------------------------------------------------------------------------------
-URL Politique de confidentialité (champ dédié)
+URL Politique de confidentialité (champ dédié Chrome Web Store)
 --------------------------------------------------------------------------------
-https://VOTRE-DOMAINE-OU-GITHUB-PAGES/privacy-policy.html
+https://diaganaseydi011-prog.github.io/manga-central/privacy-policy.html
 
 --------------------------------------------------------------------------------
 Justification des permissions (champ "Permission justification" par permission)
