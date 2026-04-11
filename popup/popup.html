@@ -124,6 +124,26 @@
     <!-- TAB: Paramètres (réglages + sites personnalisés) -->
     <section id="settings" class="tab-content">
       <div class="settings-block">
+        <h2 class="panel-title">Activation</h2>
+        <p class="settings-lead">Désactiver l’extension partout ou uniquement sur certains sites (rechargez la page après changement).</p>
+        <div class="extension-control-bar" role="region" aria-label="Activation de l’extension">
+          <div class="extension-control-row">
+            <span class="extension-control-label">Extension</span>
+            <label class="switch-neon" title="MangaCentral sur tous les sites">
+              <input type="checkbox" id="globalExtensionEnabled" checked aria-describedby="globalExtensionHint">
+              <span class="switch-neon-slider" aria-hidden="true"></span>
+            </label>
+            <span class="extension-control-hint" id="globalExtensionHint">Active partout</span>
+          </div>
+          <div class="extension-control-row extension-site-row">
+            <span class="extension-site-label">Onglet actuel</span>
+            <span class="extension-site-host" id="currentSiteHost">—</span>
+            <button type="button" id="toggleCurrentSiteBtn" class="btn-ghost btn-extension-site">Désactiver ce site</button>
+          </div>
+          <div id="disabledHostsChips" class="disabled-hosts-chips" hidden></div>
+        </div>
+      </div>
+      <div class="settings-block">
         <h2 class="panel-title">Paramètres</h2>
         <div class="form-row">
           <label>Vitesse autoscroll</label>

@@ -35,7 +35,9 @@ class PopupManager {
     this.settings = {
       autoScrollSpeed: 2,
       geminiApiKey: '',
-      translationLang: 'fr'
+      translationLang: 'fr',
+      extensionDisabled: false,
+      disabledHosts: []
     };
 
     this._coverCache = new Map();
@@ -101,7 +103,9 @@ class PopupManager {
     this.setupHistory();
     this.setupSettings();
     this.setupCustomSites();
-    
+    this.setupExtensionControls();
+    await this.refreshExtensionControlBar();
+
     // Initial render
     this.renderDashboard();
     this.renderLibrary();
@@ -216,6 +220,8 @@ class PopupManager {
     if (this.history.length !== prevHistLen) await chrome.storage.local.set({ readingHistory: this.history });
     this.customSites = result.customSites || [];
     this.settings = { ...this.settings, ...(result.settings || {}) };
+    if (typeof this.settings.extensionDisabled !== 'boolean') this.settings.extensionDisabled = false;
+    if (!Array.isArray(this.settings.disabledHosts)) this.settings.disabledHosts = [];
   }
 
   _dedupeHistory() {
@@ -343,6 +349,7 @@ class PopupManager {
     if (panel) panel.classList.add('active');
 
     this.currentTab = tabName;
+    if (tabName === 'settings') this.refreshExtensionControlBar();
   }
 
   // ===== DASHBOARD (2 colonnes + bloc "En cours") =====
@@ -520,7 +527,9 @@ class PopupManager {
       const response = await chrome.runtime.sendMessage({ type: 'GET_CURRENT_PAGE_META' }) || {};
       if (response.error) {
         if (response.error === 'no_tab') this.showToast('Aucun onglet actif.', 'error');
-        else this.showToast('Cette page n’est pas reconnue comme un chapitre manga.\n\nOuvrez un chapitre (l’URL doit contenir un numéro, ex. chapitre-614 ou chapter-123) puis réessayez.', 'error');
+        else if (response.error === 'extension_disabled') {
+          this.showToast('MangaCentral est désactivé sur cette page ou partout. Réactivez-le dans Paramètres → Activation puis rechargez l’onglet.', 'error');
+        } else this.showToast('Cette page n’est pas reconnue comme un chapitre manga.\n\nOuvrez un chapitre (l’URL doit contenir un numéro, ex. chapitre-614 ou chapter-123) puis réessayez.', 'error');
         return;
       }
       const meta = response.meta;
@@ -1079,6 +1088,120 @@ class PopupManager {
       };
       reader.readAsDataURL(file);
     });
+  }
+
+  _normalizeHostKey(host) {
+    return String(host || '').replace(/^www\./i, '').toLowerCase();
+  }
+
+  async refreshExtensionControlBar() {
+    const enabledCb = document.getElementById('globalExtensionEnabled');
+    const hint = document.getElementById('globalExtensionHint');
+    const hostEl = document.getElementById('currentSiteHost');
+    const siteBtn = document.getElementById('toggleCurrentSiteBtn');
+    const chips = document.getElementById('disabledHostsChips');
+
+    if (enabledCb) enabledCb.checked = !this.settings.extensionDisabled;
+    if (hint) {
+      hint.textContent = this.settings.extensionDisabled ? 'Désactivée partout' : 'Active partout';
+    }
+
+    let tabHost = '';
+    let tabOk = false;
+    try {
+      const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
+      const tab = tabs && tabs[0];
+      const url = tab && tab.url ? String(tab.url) : '';
+      if (/^https?:\/\//i.test(url)) {
+        tabHost = new URL(url).hostname.replace(/^www\./i, '');
+        tabOk = true;
+      }
+    } catch (_) {
+      /* ignore */
+    }
+
+    if (hostEl) hostEl.textContent = tabOk ? tabHost : '—';
+    if (siteBtn) {
+      if (!tabOk) {
+        siteBtn.disabled = true;
+        siteBtn.textContent = 'Pas une page web';
+        delete siteBtn.dataset.host;
+      } else {
+        siteBtn.disabled = false;
+        siteBtn.dataset.host = tabHost;
+        const hosts = this.settings.disabledHosts || [];
+        const nh = this._normalizeHostKey(tabHost);
+        const siteOff = hosts.some((h) => this._normalizeHostKey(h) === nh);
+        siteBtn.textContent = siteOff ? 'Réactiver ce site' : 'Désactiver ce site';
+      }
+    }
+
+    const hostList = (this.settings.disabledHosts || []).filter(Boolean);
+    if (chips) {
+      if (hostList.length === 0) {
+        chips.hidden = true;
+        chips.innerHTML = '';
+      } else {
+        chips.hidden = false;
+        chips.innerHTML =
+          '<span class="disabled-hosts-title">Sites exclus</span>' +
+          hostList
+            .map((h) => {
+              const safe = this._escapeHtml(h);
+              return `<span class="host-chip" data-host="${safe}"><span class="host-chip-text">${safe}</span><button type="button" class="host-chip-remove" aria-label="Retirer ${safe}">×</button></span>`;
+            })
+            .join('');
+        chips.querySelectorAll('.host-chip-remove').forEach((btn) => {
+          btn.addEventListener('click', async (e) => {
+            e.preventDefault();
+            const chip = btn.closest('.host-chip');
+            const raw = chip && chip.getAttribute('data-host');
+            if (!raw) return;
+            this.settings.disabledHosts = (this.settings.disabledHosts || []).filter((x) => String(x) !== raw);
+            await this.saveSettings();
+            await this.refreshExtensionControlBar();
+            this.showToast(`« ${raw} » retiré des exclusions. Rechargez l’onglet si besoin.`, 'success');
+          });
+        });
+      }
+    }
+  }
+
+  setupExtensionControls() {
+    const enabledCb = document.getElementById('globalExtensionEnabled');
+    const siteBtn = document.getElementById('toggleCurrentSiteBtn');
+    if (enabledCb) {
+      enabledCb.addEventListener('change', async () => {
+        this.settings.extensionDisabled = !enabledCb.checked;
+        await this.saveSettings();
+        this.showToast(
+          this.settings.extensionDisabled
+            ? 'Extension désactivée partout. Rechargez les pages ouvertes pour appliquer.'
+            : 'Extension réactivée. Rechargez les pages ouvertes pour appliquer.',
+          'info'
+        );
+        await this.refreshExtensionControlBar();
+      });
+    }
+    if (siteBtn) {
+      siteBtn.addEventListener('click', async () => {
+        const h = siteBtn.dataset.host;
+        if (!h || siteBtn.disabled) return;
+        const nh = this._normalizeHostKey(h);
+        const hosts = Array.isArray(this.settings.disabledHosts) ? [...this.settings.disabledHosts] : [];
+        const idx = hosts.findIndex((x) => this._normalizeHostKey(x) === nh);
+        if (idx === -1) {
+          hosts.push(h);
+          this.showToast(`MangaCentral est désactivé sur ${h}. Rechargez l’onglet.`, 'info');
+        } else {
+          hosts.splice(idx, 1);
+          this.showToast(`MangaCentral est réactivé sur ${h}. Rechargez l’onglet.`, 'info');
+        }
+        this.settings.disabledHosts = hosts;
+        await this.saveSettings();
+        await this.refreshExtensionControlBar();
+      });
+    }
   }
 
   // ===== SETTINGS (onglet Paramètres) =====

@@ -88,7 +88,11 @@ chrome.runtime.onInstalled.addListener(() => {
   chrome.storage.local.get(['readingHistory', 'settings', 'library'], (result) => {
     if (!result.readingHistory) chrome.storage.local.set({ readingHistory: [] });
     if (!result.library) chrome.storage.local.set({ library: [] });
-    if (!result.settings) chrome.storage.local.set({ settings: { autoScrollSpeed: 2 } });
+    if (!result.settings) {
+      chrome.storage.local.set({
+        settings: { autoScrollSpeed: 2, extensionDisabled: false, disabledHosts: [] }
+      });
+    }
   });
 });
 

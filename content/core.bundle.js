@@ -1430,6 +1430,29 @@
     }
   }
   let lastUrl = "";
+  function getHostnameNoWww() {
+    return (location.hostname || "").replace(/^www\./i, "").toLowerCase();
+  }
+  function isExtensionInactiveForPage(settings) {
+    const s = settings || {};
+    if (s.extensionDisabled === true) return true;
+    const host = getHostnameNoWww();
+    const hosts = Array.isArray(s.disabledHosts) ? s.disabledHosts : [];
+    return hosts.some((h) => String(h).replace(/^www\./i, "").toLowerCase() === host);
+  }
+  let extensionToggleWatchInstalled = false;
+  function watchExtensionToggleReload() {
+    if (extensionToggleWatchInstalled) return;
+    extensionToggleWatchInstalled = true;
+    chrome.storage.onChanged.addListener((changes, area) => {
+      if (area !== "local" || !changes.settings) return;
+      const prev = changes.settings.oldValue && typeof changes.settings.oldValue === "object" ? changes.settings.oldValue : {};
+      const next = changes.settings.newValue && typeof changes.settings.newValue === "object" ? changes.settings.newValue : {};
+      const was = isExtensionInactiveForPage(prev);
+      const now = isExtensionInactiveForPage(next);
+      if (was !== now) location.reload();
+    });
+  }
   async function detectAndApply(ui) {
     try {
       const parser = await ParserFactory.getParser(window.location.href, document);
@@ -1473,7 +1496,19 @@
   }
   (async () => {
     if (window.hasMangaCentralRun) return;
+    const { settings = {} } = await chrome.storage.local.get("settings");
+    if (isExtensionInactiveForPage(settings)) {
+      window.hasMangaCentralRun = true;
+      watchExtensionToggleReload();
+      chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
+        if (msg.type !== "GET_META") return false;
+        sendResponse({ error: "extension_disabled" });
+        return false;
+      });
+      return;
+    }
     window.hasMangaCentralRun = true;
+    watchExtensionToggleReload();
     console.log("🚀 [MangaCentral] Core Initialized");
     const parser = await ParserFactory.getParser(window.location.href, document);
     const autoScroller = new AutoScroller();
