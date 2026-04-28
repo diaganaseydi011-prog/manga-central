@@ -101,6 +101,7 @@ function startUrlWatch(ui) {
   const parser = await ParserFactory.getParser(window.location.href, document);
   const autoScroller = new AutoScroller();
   const ui = new UIManager(parser, autoScroller);
+  if (ui && typeof ui.setLang === 'function') ui.setLang(settings.displayLang || 'fr');
 
   try {
     const result = await detectAndApply(ui);

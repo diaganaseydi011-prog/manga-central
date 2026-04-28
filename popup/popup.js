@@ -37,7 +37,8 @@ class PopupManager {
       geminiApiKey: '',
       translationLang: 'fr',
       extensionDisabled: false,
-      disabledHosts: []
+      disabledHosts: [],
+      displayLang: 'fr'
     };
 
     this._coverCache = new Map();
@@ -84,7 +85,7 @@ class PopupManager {
     }
     const sorted = Array.from(domains).sort((a, b) => a.localeCompare(b));
 
-    domainSelect.innerHTML = `<option value="">Tous les sites</option>` +
+    domainSelect.innerHTML = `<option value="">${this.t('library_all_sites')}</option>` +
       sorted.map(d => `<option value="${this._escapeHtml(d)}">${this._escapeHtml(d)}</option>`).join('');
 
     domainSelect.value = sorted.includes(current) ? current : '';
@@ -105,12 +106,52 @@ class PopupManager {
     this.setupCustomSites();
     this.setupExtensionControls();
     await this.refreshExtensionControlBar();
+    this.applyI18nStatic();
 
     // Initial render
     this.renderDashboard();
     this.renderLibrary();
     this.renderHistory();
     this.renderCustomSitesPreview();
+  }
+
+  applyI18nStatic() {
+    const setAttr = (el, attr, key) => {
+      if (!el || !key) return;
+      el.setAttribute(attr, this.t(key));
+    };
+
+    document.querySelectorAll('[data-i18n]').forEach((el) => {
+      const key = el.getAttribute('data-i18n');
+      if (!key) return;
+      el.textContent = this.t(key);
+    });
+    document.querySelectorAll('[data-i18n-placeholder]').forEach((el) => {
+      const key = el.getAttribute('data-i18n-placeholder');
+      if (!key) return;
+      el.setAttribute('placeholder', this.t(key));
+    });
+    document.querySelectorAll('[data-i18n-title]').forEach((el) => {
+      const key = el.getAttribute('data-i18n-title');
+      setAttr(el, 'title', key);
+    });
+    document.querySelectorAll('[data-i18n-aria-label]').forEach((el) => {
+      const key = el.getAttribute('data-i18n-aria-label');
+      setAttr(el, 'aria-label', key);
+    });
+
+    // Bottom nav button titles
+    const titleMap = [
+      { sel: '.nav-tab[data-tab="dashboard"]', key: 'nav_dashboard' },
+      { sel: '.nav-tab[data-tab="library"]', key: 'nav_library' },
+      { sel: '.nav-tab[data-tab="search"]', key: 'nav_search' },
+      { sel: '.nav-tab[data-tab="history"]', key: 'nav_history' },
+      { sel: '.nav-tab[data-tab="settings"]', key: 'nav_settings' },
+    ];
+    for (const { sel, key } of titleMap) {
+      const el = document.querySelector(sel);
+      if (el) el.setAttribute('title', this.t(key));
+    }
   }
 
   _normalizeTitle(t) {
@@ -222,6 +263,313 @@ class PopupManager {
     this.settings = { ...this.settings, ...(result.settings || {}) };
     if (typeof this.settings.extensionDisabled !== 'boolean') this.settings.extensionDisabled = false;
     if (!Array.isArray(this.settings.disabledHosts)) this.settings.disabledHosts = [];
+    if (!this.settings.displayLang) this.settings.displayLang = 'fr';
+  }
+
+  t(key, vars = {}) {
+    const lang = (this.settings.displayLang || 'fr').toLowerCase();
+    const dict = {
+      fr: {
+        // Common
+        common_save: 'Enregistrer',
+        common_cancel: 'Annuler',
+        common_open: 'Ouvrir',
+        common_edit: 'Modifier',
+        common_delete: 'Supprimer',
+        common_tools: 'Outils',
+        // Nav / sections
+        nav_dashboard: 'Tableau de bord',
+        nav_library: 'Librairie',
+        nav_search: 'Découverte',
+        nav_history: 'Historique',
+        nav_settings: 'Paramètres',
+        counter_chapters_read: 'Chapitres lus',
+        // Dashboard
+        dash_library_title: 'Bibliothèque',
+        dash_current_title: 'En cours de lecture',
+        dash_current_empty: 'Aucun manga en cours',
+        dash_current_empty_hint: 'Vos lectures apparaîtront ici',
+        dash_empty_reading: 'Aucune lecture en cours',
+        dash_empty_reading_hint: 'Ouvrez un chapitre pour commencer',
+        dash_virtual_badge: 'Pas encore en bibliothèque',
+        dash_continue: 'Continuer',
+        dash_open: 'Ouvrir',
+        dash_add_to_library: 'Ajouter à la bibliothèque',
+        dash_current_block_title: 'En cours de lecture',
+        dash_current_block_hint: 'Ouvrez un chapitre manga dans un onglet pour le voir ici',
+        // Library
+        library_title: 'Ma Bibliothèque',
+        library_add_current: '📄 Page actuelle',
+        library_add_current_title: 'Ouvrez un chapitre manga puis cliquez ici',
+        library_add_manual: '✏️ Manuellement',
+        library_search_ph: 'Rechercher dans la bibliothèque...',
+        library_sort_aria: 'Trier la bibliothèque',
+        sort_title_asc: 'Titre (A → Z)',
+        sort_title_desc: 'Titre (Z → A)',
+        sort_lastread_desc: 'Dernière lecture',
+        sort_added_desc: 'Ajout récent',
+        library_filter_domain_aria: 'Filtrer par site',
+        library_all_sites: 'Tous les sites',
+        filter_all: 'Tous',
+        filter_reading: 'En cours',
+        filter_completed: 'Terminés',
+        filter_paused: 'En pause',
+        library_empty: 'Bibliothèque vide',
+        library_empty_hint: 'Ajoutez vos mangas favoris',
+        library_empty_filtered: '📚 Aucun manga',
+        library_empty_filtered_suffix: 'dans cette catégorie',
+        library_source_unknown: 'Source inconnue',
+        library_delete_confirm: 'Supprimer "{title}" de la bibliothèque ?',
+        // Status
+        status_reading: 'En cours',
+        status_completed: 'Terminé',
+        status_paused: 'En pause',
+        // Search
+        search_ph: 'Rechercher un manga...',
+        search_loading: 'Recherche...',
+        search_empty: 'Entrez un titre pour rechercher',
+        search_open_site_title: 'Ouvrir sur le site',
+        search_save_title: 'Ajouter à la bibliothèque',
+        search_save: 'Enregistrer',
+        search_no_results: '😕 Aucun résultat',
+        search_error: '❌ Erreur de recherche',
+        search_chapter_label: 'Chapitre',
+        // History
+        history_title: 'Historique',
+        history_clear: 'Effacer',
+        history_clear_confirm: "Effacer tout l'historique ?",
+        history_empty: '📜 Aucun historique',
+        history_chapter_label: 'Chapitre',
+        time_just_now: "À l'instant",
+        time_ago_m: 'il y a {n}m',
+        time_ago_h: 'il y a {n}h',
+        time_ago_d: 'il y a {n}j',
+        // Settings
+        settings_activation_title: 'Activation',
+        settings_activation_lead: 'Désactiver l’extension partout ou uniquement sur certains sites (rechargez la page après changement).',
+        settings_extension_label: 'Extension',
+        settings_current_tab: 'Onglet actuel',
+        settings_title: 'Paramètres',
+        settings_display_lang: "Langue d’affichage",
+        settings_scroll_speed: 'Vitesse autoscroll',
+        settings_gemini_key: 'Clé API Gemini (traduction)',
+        settings_api_key_ph: 'Clé API...',
+        settings_translation_lang: 'Langue de traduction',
+        settings_save: 'Enregistrer',
+        // Custom sites
+        custom_sites_title: 'Sites personnalisés',
+        custom_sites_add: '+ Ajouter un site',
+        custom_sites_empty: '🛠️ Aucun site personnalisé',
+        custom_sites_empty_hint: 'Cliquez sur "+ Ajouter un site" pour en configurer un.',
+        custom_sites_delete_confirm: 'Supprimer "{name}" ?',
+        // Modals
+        modal_add_title: 'Ajouter un titre',
+        modal_title_label: 'Titre',
+        modal_title_ph: 'Ex: Solo Leveling',
+        modal_url_label: 'URL du chapitre (optionnel)',
+        modal_status_label: 'Statut',
+        modal_cover_toggle_add: '+ Couverture (optionnel)',
+        modal_cover_toggle_hide: '− Masquer couverture',
+        modal_cover_url_label: 'URL de la couverture',
+        modal_cover_upload_label: 'Ou importer une image',
+        modal_cover_remove: 'Retirer la couverture',
+        modal_cover_hint: 'L’image importée est redimensionnée et enregistrée localement.',
+        modal_site_title: 'Site personnalisé',
+        site_name: 'Nom',
+        site_name_ph: 'ex: Mon Scan',
+        site_domain: 'Domaine',
+        site_domain_ph: 'monsite.com',
+        site_title_selector: 'Sélecteur titre (CSS)',
+        site_chapter_pattern: 'Pattern chapitre (regex)',
+        site_container_selector: 'Conteneur images',
+        site_image_selector: 'Sélecteur image',
+        site_cover_selector: 'Couverture (optionnel)',
+        site_next_btn: 'Bouton suivant',
+        site_prev_btn: 'Bouton précédent',
+        site_required_err: 'Nom et domaine sont obligatoires.',
+        // Toasters / errors
+        err_no_tab: 'Aucun onglet actif.',
+        err_not_manga_page: 'Cette page n’est pas reconnue comme un chapitre manga.\n\nOuvrez un chapitre (l’URL doit contenir un numéro, ex. chapitre-614 ou chapter-123) puis réessayez.',
+        err_no_meta: 'Impossible de lire les infos de la page. Rechargez l’onglet puis réessayez.',
+        err_cant_read_current: 'Impossible de lire la page actuelle. Ouvrez un chapitre manga puis réessayez.',
+        toast_updated_chapter: '"{title}" mis à jour (Ch. {ch}).',
+        toast_added_chapter: '"{title}" ajouté (Ch. {ch}).',
+        toast_added_library: '"{title}" ajouté à la bibliothèque !',
+        toast_cover_imported: 'Couverture importée.',
+        toast_cover_removed: 'Couverture retirée.',
+        toast_image_invalid: 'Image invalide.',
+        toast_cant_read_image: 'Impossible de lire l’image.',
+        modal_title_required: 'Le titre est obligatoire !',
+        toast_ext_disabled_everywhere: 'Extension désactivée partout. Rechargez les pages ouvertes pour appliquer.',
+        toast_ext_enabled_everywhere: 'Extension réactivée. Rechargez les pages ouvertes pour appliquer.',
+        ext_active_everywhere: 'Active partout',
+        ext_disabled_everywhere: 'Désactivée partout',
+        ext_not_web_page: 'Pas une page web',
+        ext_disable_site: 'Désactiver ce site',
+        ext_enable_site: 'Réactiver ce site',
+        ext_site_removed: '« {host} » retiré des exclusions. Rechargez l’onglet si besoin.',
+        ext_site_disabled: 'MangaCentral est désactivé sur {host}. Rechargez l’onglet.',
+        ext_site_enabled: 'MangaCentral est réactivé sur {host}. Rechargez l’onglet.',
+        ext_disabled_hint: 'MangaCentral est désactivé sur cette page ou partout. Réactivez-le dans Paramètres → Activation puis rechargez l’onglet.',
+        disabled_sites_title: 'Sites exclus',
+        chip_remove_aria: 'Retirer {host}',
+        settings_saved: 'Paramètres enregistrés !'
+        lang_fr: 'Français',
+      },
+      en: {
+        // Common
+        common_save: 'Save',
+        common_cancel: 'Cancel',
+        common_open: 'Open',
+        common_edit: 'Edit',
+        common_delete: 'Delete',
+        common_tools: 'Tools',
+        // Nav / sections
+        nav_dashboard: 'Dashboard',
+        nav_library: 'Library',
+        nav_search: 'Discover',
+        nav_history: 'History',
+        nav_settings: 'Settings',
+        counter_chapters_read: 'Chapters read',
+        // Dashboard
+        dash_library_title: 'Library',
+        dash_current_title: 'Currently reading',
+        dash_current_empty: 'No manga in progress',
+        dash_current_empty_hint: 'Your current reads will appear here',
+        dash_empty_reading: 'No reading in progress',
+        dash_empty_reading_hint: 'Open a chapter to start',
+        dash_virtual_badge: 'Not in library yet',
+        dash_continue: 'Continue',
+        dash_open: 'Open',
+        dash_add_to_library: 'Add to library',
+        dash_current_block_title: 'Currently reading',
+        dash_current_block_hint: 'Open a manga chapter tab to see it here',
+        // Library
+        library_title: 'My Library',
+        library_add_current: '📄 Current page',
+        library_add_current_title: 'Open a manga chapter then click here',
+        library_add_manual: '✏️ Add manually',
+        library_search_ph: 'Search in library...',
+        library_sort_aria: 'Sort library',
+        sort_title_asc: 'Title (A → Z)',
+        sort_title_desc: 'Title (Z → A)',
+        sort_lastread_desc: 'Last read',
+        sort_added_desc: 'Recently added',
+        library_filter_domain_aria: 'Filter by site',
+        library_all_sites: 'All sites',
+        filter_all: 'All',
+        filter_reading: 'Reading',
+        filter_completed: 'Completed',
+        filter_paused: 'Paused',
+        library_empty: 'Library is empty',
+        library_empty_hint: 'Add your favorite manga',
+        library_empty_filtered: '📚 No manga',
+        library_empty_filtered_suffix: 'in this category',
+        library_source_unknown: 'Unknown source',
+        library_delete_confirm: 'Delete "{title}" from the library?',
+        // Status
+        status_reading: 'Reading',
+        status_completed: 'Completed',
+        status_paused: 'Paused',
+        // Search
+        search_ph: 'Search a manga...',
+        search_loading: 'Searching...',
+        search_empty: 'Type a title to search',
+        search_open_site_title: 'Open on website',
+        search_save_title: 'Add to library',
+        search_save: 'Save',
+        search_no_results: '😕 No results',
+        search_error: '❌ Search error',
+        search_chapter_label: 'Chapter',
+        // History
+        history_title: 'History',
+        history_clear: 'Clear',
+        history_clear_confirm: 'Clear all history?',
+        history_empty: '📜 No history',
+        history_chapter_label: 'Chapter',
+        time_just_now: 'Just now',
+        time_ago_m: '{n}m ago',
+        time_ago_h: '{n}h ago',
+        time_ago_d: '{n}d ago',
+        // Settings
+        settings_activation_title: 'Activation',
+        settings_activation_lead: 'Disable the extension everywhere or only on some sites (reload the page after changes).',
+        settings_extension_label: 'Extension',
+        settings_current_tab: 'Current tab',
+        settings_title: 'Settings',
+        settings_display_lang: 'Display language',
+        settings_scroll_speed: 'Auto-scroll speed',
+        settings_gemini_key: 'Gemini API key (translation)',
+        settings_api_key_ph: 'API key...',
+        settings_translation_lang: 'Translation language',
+        settings_save: 'Save',
+        // Custom sites
+        custom_sites_title: 'Custom sites',
+        custom_sites_add: '+ Add a site',
+        custom_sites_empty: '🛠️ No custom sites',
+        custom_sites_empty_hint: 'Click "+ Add a site" to configure one.',
+        custom_sites_delete_confirm: 'Delete "{name}"?',
+        // Modals
+        modal_add_title: 'Add a title',
+        modal_title_label: 'Title',
+        modal_title_ph: 'e.g. Solo Leveling',
+        modal_url_label: 'Chapter URL (optional)',
+        modal_status_label: 'Status',
+        modal_cover_toggle_add: '+ Cover (optional)',
+        modal_cover_toggle_hide: '− Hide cover',
+        modal_cover_url_label: 'Cover URL',
+        modal_cover_upload_label: 'Or upload an image',
+        modal_cover_remove: 'Remove cover',
+        modal_cover_hint: 'The uploaded image is resized and stored locally.',
+        modal_site_title: 'Custom site',
+        site_name: 'Name',
+        site_name_ph: 'e.g. My Scan',
+        site_domain: 'Domain',
+        site_domain_ph: 'example.com',
+        site_title_selector: 'Title selector (CSS)',
+        site_chapter_pattern: 'Chapter pattern (regex)',
+        site_container_selector: 'Images container',
+        site_image_selector: 'Image selector',
+        site_cover_selector: 'Cover (optional)',
+        site_next_btn: 'Next button',
+        site_prev_btn: 'Previous button',
+        site_required_err: 'Name and domain are required.',
+        // Toasters / errors
+        err_no_tab: 'No active tab.',
+        err_not_manga_page: 'This page is not recognized as a manga chapter.\n\nOpen a chapter (URL must contain a number, e.g. chapter-614 or chapter-123) then try again.',
+        err_no_meta: 'Could not read page info. Reload the tab and try again.',
+        err_cant_read_current: 'Could not read the current page. Open a manga chapter and try again.',
+        toast_updated_chapter: '"{title}" updated (Ch. {ch}).',
+        toast_added_chapter: '"{title}" added (Ch. {ch}).',
+        toast_added_library: '"{title}" added to the library!',
+        toast_cover_imported: 'Cover imported.',
+        toast_cover_removed: 'Cover removed.',
+        toast_image_invalid: 'Invalid image.',
+        toast_cant_read_image: 'Could not read the image.',
+        modal_title_required: 'Title is required!',
+        toast_ext_disabled_everywhere: 'Extension disabled everywhere. Reload open pages to apply.',
+        toast_ext_enabled_everywhere: 'Extension enabled. Reload open pages to apply.',
+        ext_active_everywhere: 'Enabled everywhere',
+        ext_disabled_everywhere: 'Disabled everywhere',
+        ext_not_web_page: 'Not a web page',
+        ext_disable_site: 'Disable this site',
+        ext_enable_site: 'Enable this site',
+        ext_site_removed: '“{host}” removed from exclusions. Reload the tab if needed.',
+        ext_site_disabled: 'MangaCentral is disabled on {host}. Reload the tab.',
+        ext_site_enabled: 'MangaCentral is enabled on {host}. Reload the tab.',
+        ext_disabled_hint: 'MangaCentral is disabled on this page or everywhere. Re-enable it in Settings → Activation, then reload the tab.',
+        disabled_sites_title: 'Excluded sites',
+        chip_remove_aria: 'Remove {host}',
+        settings_saved: 'Settings saved!'
+        lang_fr: 'French',
+      }
+    };
+    const table = dict[lang] || dict.fr;
+    let out = table[key] || dict.fr[key] || key;
+    for (const [k, v] of Object.entries(vars || {})) {
+      out = out.replaceAll(`{${k}}`, String(v));
+    }
+    return out;
   }
 
   _dedupeHistory() {
@@ -372,12 +720,12 @@ class PopupManager {
         <div class="current-reading-content">
           <img src="${(featured.cover && featured.cover.trim()) ? featured.cover : COVER_PLACEHOLDER}" data-mc-referer="${this._escapeHtml(featuredReferer)}" class="current-reading-cover" alt="${this._escapeHtml(featured.title)}">
           <div class="current-reading-title">${this._escapeHtml(featured.title)}</div>
-          ${virtual ? '<div class="current-reading-badge">Pas encore en bibliothèque</div>' : ''}
+          ${virtual ? `<div class="current-reading-badge">${this.t('dash_virtual_badge')}</div>` : ''}
           <div class="current-reading-chapter">Ch. ${featured.lastChapter || '?'}</div>
           ${recentFeatured.length ? `<div class="current-reading-recent">${recentFeatured.map(r => r.url ? `<a href="${this._escapeHtml(r.url)}" class="current-reading-recent-chap" data-url="${this._escapeHtml(r.url)}">Ch. ${this._escapeHtml(r.ch)}</a>` : `<span class="current-reading-recent-chap">Ch. ${this._escapeHtml(r.ch)}</span>`).join('')}</div>` : ''}
           <div class="current-reading-actions">
-            <button type="button" class="btn-neon btn-continue">${featured.url ? 'Continuer' : 'Ouvrir'}</button>
-            ${virtual ? '<button type="button" class="btn-neon btn-add-current">Ajouter à la bibliothèque</button>' : '<button type="button" class="btn-neon btn-open-tools">Outils</button>'}
+            <button type="button" class="btn-neon btn-continue">${featured.url ? this.t('dash_continue') : this.t('dash_open')}</button>
+            ${virtual ? `<button type="button" class="btn-neon btn-add-current">${this.t('dash_add_to_library')}</button>` : `<button type="button" class="btn-neon btn-open-tools">${this.t('common_tools')}</button>`}
           </div>
         </div>
       `;
@@ -418,8 +766,8 @@ class PopupManager {
       currentBlock.innerHTML = `
         <div class="current-reading-placeholder">
           <div class="placeholder-icon">📚</div>
-          <p>En cours de lecture</p>
-          <small>Ouvrez un chapitre manga dans un onglet pour le voir ici</small>
+          <p>${this.t('dash_current_block_title')}</p>
+          <small>${this.t('dash_current_block_hint')}</small>
         </div>
       `;
     }
@@ -427,8 +775,8 @@ class PopupManager {
     if (reading.length === 0) {
       container.innerHTML = `
         <div class="empty-state">
-          <p>Aucune lecture en cours</p>
-          <small>Ouvrez un chapitre pour commencer</small>
+          <p>${this.t('dash_empty_reading')}</p>
+          <small>${this.t('dash_empty_reading_hint')}</small>
         </div>
       `;
     } else {
@@ -518,7 +866,7 @@ class PopupManager {
       const btn = document.getElementById('toggleAdvancedBtn');
       const isShown = row.style.display !== 'none';
       row.style.display = isShown ? 'none' : 'block';
-      btn.textContent = isShown ? '+ Couverture (optionnel)' : '− Masquer couverture';
+      btn.textContent = isShown ? this.t('modal_cover_toggle_add') : this.t('modal_cover_toggle_hide');
     });
   }
 
@@ -526,16 +874,16 @@ class PopupManager {
     try {
       const response = await chrome.runtime.sendMessage({ type: 'GET_CURRENT_PAGE_META' }) || {};
       if (response.error) {
-        if (response.error === 'no_tab') this.showToast('Aucun onglet actif.', 'error');
+        if (response.error === 'no_tab') this.showToast(this.t('err_no_tab'), 'error');
         else if (response.error === 'extension_disabled') {
-          this.showToast('MangaCentral est désactivé sur cette page ou partout. Réactivez-le dans Paramètres → Activation puis rechargez l’onglet.', 'error');
-        } else this.showToast('Cette page n’est pas reconnue comme un chapitre manga.\n\nOuvrez un chapitre (l’URL doit contenir un numéro, ex. chapitre-614 ou chapter-123) puis réessayez.', 'error');
+          this.showToast(this.t('ext_disabled_hint'), 'error');
+        } else this.showToast(this.t('err_not_manga_page'), 'error');
         return;
       }
       const meta = response.meta;
       const url = response.url;
       if (!meta || !url) {
-        this.showToast('Impossible de lire les infos de la page. Rechargez l’onglet puis réessayez.', 'error');
+        this.showToast(this.t('err_no_meta'), 'error');
         return;
       }
       let cover = meta.cover || '';
@@ -560,7 +908,7 @@ class PopupManager {
         await this.saveLibrary();
         this.renderLibrary();
         this.renderDashboard();
-        this.showToast(`"${meta.title}" mis à jour (Ch. ${meta.chapter}).`, 'success');
+        this.showToast(this.t('toast_updated_chapter', { title: meta.title, ch: meta.chapter }), 'success');
         return;
       }
       const chNum = parseFloat(meta.chapter) || 0;
@@ -580,10 +928,10 @@ class PopupManager {
       await this.saveLibrary();
       this.renderLibrary();
       this.renderDashboard();
-      this.showToast(`"${meta.title}" ajouté (Ch. ${meta.chapter}).`, 'success');
+      this.showToast(this.t('toast_added_chapter', { title: meta.title, ch: meta.chapter }), 'success');
     } catch (e) {
       console.error(e);
-      this.showToast('Impossible de lire la page actuelle. Ouvrez un chapitre manga puis réessayez.', 'error');
+      this.showToast(this.t('err_cant_read_current'), 'error');
     }
   }
 
@@ -624,9 +972,10 @@ class PopupManager {
     });
     
     if (filtered.length === 0) {
+      const suffix = filterStatus !== 'all' ? ` ${this.t('library_empty_filtered_suffix')}` : '';
       container.innerHTML = `
         <div class="empty-state">
-          <p>📚 Aucun manga ${filterStatus !== 'all' ? 'dans cette catégorie' : ''}</p>
+          <p>${this.t('library_empty_filtered')}${suffix}</p>
         </div>
       `;
       return;
@@ -635,7 +984,7 @@ class PopupManager {
     container.innerHTML = filtered.map(manga => {
       const referer = manga && manga.url ? this._escapeHtml(String(manga.url)) : '';
       const urlDomain = this._getDomainFromUrl(manga && manga.url);
-      const sourceLabel = manga.source || urlDomain || 'Source inconnue';
+      const sourceLabel = manga.source || urlDomain || this.t('library_source_unknown');
       return `
       <div class="library-item" data-id="${manga.id}">
         <img src="${(manga.cover && manga.cover.trim()) ? manga.cover : COVER_PLACEHOLDER}" data-mc-referer="${referer}" class="library-cover" alt="${manga.title}">
@@ -646,9 +995,9 @@ class PopupManager {
             <span class="library-status ${manga.status}">${this.getStatusLabel(manga.status)}</span>
           </div>
           <div class="library-actions">
-            <button class="action-btn open-btn" title="Ouvrir">🔗</button>
-            <button class="action-btn edit-btn" title="Modifier">✏️</button>
-            <button class="action-btn delete-btn" title="Supprimer">🗑️</button>
+            <button class="action-btn open-btn" title="${this.t('common_open')}">🔗</button>
+            <button class="action-btn edit-btn" title="${this.t('common_edit')}">✏️</button>
+            <button class="action-btn delete-btn" title="${this.t('common_delete')}">🗑️</button>
           </div>
         </div>
       </div>
@@ -673,7 +1022,7 @@ class PopupManager {
       
       item.querySelector('.delete-btn')?.addEventListener('click', async (e) => {
         e.stopPropagation();
-        if (confirm(`Supprimer "${manga.title}" de la bibliothèque ?`)) {
+        if (confirm(this.t('library_delete_confirm', { title: manga.title }))) {
           this.library = this.library.filter(m => m.id !== id);
           await this.saveLibrary();
           this.renderLibrary();
@@ -685,9 +1034,9 @@ class PopupManager {
 
   getStatusLabel(status) {
     const labels = {
-      reading: 'En cours',
-      completed: 'Terminé',
-      paused: 'En pause'
+      reading: this.t('status_reading'),
+      completed: this.t('status_completed'),
+      paused: this.t('status_paused')
     };
     return labels[status] || status;
   }
@@ -739,10 +1088,10 @@ class PopupManager {
             <div class="search-details">
               <div class="search-title">${this._escapeHtml(result.title)}</div>
               <div class="search-source">📍 ${this._escapeHtml(result.source || '')}</div>
-              <div class="search-chapter">📖 Chapitre ${this._escapeHtml(String(result.latestChapter || '?'))}</div>
+              <div class="search-chapter">📖 ${this.t('search_chapter_label')} ${this._escapeHtml(String(result.latestChapter || '?'))}</div>
               <div class="search-actions">
-                ${hasUrl ? `<button type="button" class="btn-neon btn-search-open" title="Ouvrir sur le site">Ouvrir</button>` : ''}
-                <button type="button" class="btn-ghost btn-search-save" title="Ajouter à la bibliothèque">Enregistrer</button>
+                ${hasUrl ? `<button type="button" class="btn-neon btn-search-open" title="${this.t('search_open_site_title')}">${this.t('common_open')}</button>` : ''}
+                <button type="button" class="btn-ghost btn-search-save" title="${this.t('search_save_title')}">${this.t('search_save')}</button>
               </div>
             </div>
           </div>
@@ -776,7 +1125,7 @@ class PopupManager {
       } else {
         resultsContainer.innerHTML = `
           <div class="empty-state">
-            <p>😕 Aucun résultat</p>
+            <p>${this.t('search_no_results')}</p>
           </div>
         `;
       }
@@ -786,7 +1135,7 @@ class PopupManager {
       resultsContainer.style.display = 'block';
       resultsContainer.innerHTML = `
         <div class="empty-state">
-          <p>❌ Erreur de recherche</p>
+          <p>${this.t('search_error')}</p>
         </div>
       `;
     }
@@ -809,7 +1158,7 @@ class PopupManager {
       this.saveLibrary();
       this.renderLibrary();
       this.renderDashboard();
-      this.showToast(`"${result.title}" mis à jour (Ch. ${existing.lastChapter}).`, 'success');
+      this.showToast(this.t('toast_updated_chapter', { title: result.title, ch: existing.lastChapter }), 'success');
       return;
     }
     const chNum = parseFloat(result.latestChapter) || 0;
@@ -829,13 +1178,13 @@ class PopupManager {
     this.saveLibrary();
     this.renderLibrary();
     this.renderDashboard();
-    this.showToast(`"${result.title}" ajouté à la bibliothèque !`, 'success');
+    this.showToast(this.t('toast_added_library', { title: result.title }), 'success');
   }
 
   // ===== HISTORY =====
   setupHistory() {
     document.getElementById('clearHistoryBtn').addEventListener('click', async () => {
-      if (confirm('Effacer tout l\'historique ?')) {
+      if (confirm(this.t('history_clear_confirm'))) {
         await chrome.storage.local.set({ readingHistory: [] });
         this.history = [];
         this.renderHistory();
@@ -849,7 +1198,7 @@ class PopupManager {
     if (this.history.length === 0) {
       container.innerHTML = `
         <div class="empty-state">
-          <p>📜 Aucun historique</p>
+          <p>${this.t('history_empty')}</p>
         </div>
       `;
       return;
@@ -859,7 +1208,7 @@ class PopupManager {
       <div class="history-item" data-index="${index}">
         <div class="history-text">
           <div class="history-title">${this._escapeHtml(entry.title)}</div>
-          <div class="history-chapter">Chapitre ${this._escapeHtml(entry.chapter)}</div>
+          <div class="history-chapter">${this.t('history_chapter_label')} ${this._escapeHtml(entry.chapter)}</div>
         </div>
         <div class="history-time">${this.formatTime(entry.lastRead)}</div>
       </div>
@@ -900,10 +1249,10 @@ class PopupManager {
     const hours = Math.floor(minutes / 60);
     const days = Math.floor(hours / 24);
     
-    if (days > 0) return `il y a ${days}j`;
-    if (hours > 0) return `il y a ${hours}h`;
-    if (minutes > 0) return `il y a ${minutes}m`;
-    return 'À l\'instant';
+    if (days > 0) return this.t('time_ago_d', { n: days });
+    if (hours > 0) return this.t('time_ago_h', { n: hours });
+    if (minutes > 0) return this.t('time_ago_m', { n: minutes });
+    return this.t('time_just_now');
   }
 
   // ===== MODALS =====
@@ -937,13 +1286,13 @@ class PopupManager {
           this._modalCoverDataUrl = dataUrl || '';
           if (dataUrl) {
             document.getElementById('modalCover').value = '';
-            this.showToast('Couverture importée.', 'success');
+            this.showToast(this.t('toast_cover_imported'), 'success');
           } else {
-            this.showToast('Image invalide.', 'error');
+            this.showToast(this.t('toast_image_invalid'), 'error');
           }
         } catch (e) {
           console.error(e);
-          this.showToast('Impossible de lire l’image.', 'error');
+          this.showToast(this.t('toast_cant_read_image'), 'error');
         }
       });
     }
@@ -954,7 +1303,7 @@ class PopupManager {
         const coverUrlInput = document.getElementById('modalCover');
         if (coverUrlInput) coverUrlInput.value = '';
         if (coverFile) coverFile.value = '';
-        this.showToast('Couverture retirée.', 'info');
+        this.showToast(this.t('toast_cover_removed'), 'info');
       });
     }
   }
@@ -972,7 +1321,7 @@ class PopupManager {
       document.getElementById('modalStatus').value = manga.status;
       modal.dataset.editId = manga.id;
       coverRow.style.display = manga.cover ? 'block' : 'none';
-      toggleBtn.textContent = manga.cover ? '− Masquer couverture' : '+ Couverture (optionnel)';
+      toggleBtn.textContent = manga.cover ? this.t('modal_cover_toggle_hide') : this.t('modal_cover_toggle_add');
       this._modalCoverDataUrl = (manga.cover && String(manga.cover).startsWith('data:image/')) ? manga.cover : '';
       if (coverFile) coverFile.value = '';
     } else {
@@ -982,7 +1331,7 @@ class PopupManager {
       document.getElementById('modalStatus').value = 'reading';
       delete modal.dataset.editId;
       coverRow.style.display = 'none';
-      toggleBtn.textContent = '+ Couverture (optionnel)';
+      toggleBtn.textContent = this.t('modal_cover_toggle_add');
       this._modalCoverDataUrl = '';
       if (coverFile) coverFile.value = '';
     }
@@ -997,7 +1346,7 @@ class PopupManager {
     const status = document.getElementById('modalStatus').value;
 
     if (!title) {
-      this.showToast('Le titre est obligatoire !', 'error');
+      this.showToast(this.t('modal_title_required'), 'error');
       return;
     }
 
@@ -1103,7 +1452,7 @@ class PopupManager {
 
     if (enabledCb) enabledCb.checked = !this.settings.extensionDisabled;
     if (hint) {
-      hint.textContent = this.settings.extensionDisabled ? 'Désactivée partout' : 'Active partout';
+      hint.textContent = this.settings.extensionDisabled ? this.t('ext_disabled_everywhere') : this.t('ext_active_everywhere');
     }
 
     let tabHost = '';
@@ -1124,7 +1473,7 @@ class PopupManager {
     if (siteBtn) {
       if (!tabOk) {
         siteBtn.disabled = true;
-        siteBtn.textContent = 'Pas une page web';
+        siteBtn.textContent = this.t('ext_not_web_page');
         delete siteBtn.dataset.host;
       } else {
         siteBtn.disabled = false;
@@ -1132,7 +1481,7 @@ class PopupManager {
         const hosts = this.settings.disabledHosts || [];
         const nh = this._normalizeHostKey(tabHost);
         const siteOff = hosts.some((h) => this._normalizeHostKey(h) === nh);
-        siteBtn.textContent = siteOff ? 'Réactiver ce site' : 'Désactiver ce site';
+        siteBtn.textContent = siteOff ? this.t('ext_enable_site') : this.t('ext_disable_site');
       }
     }
 
@@ -1144,11 +1493,11 @@ class PopupManager {
       } else {
         chips.hidden = false;
         chips.innerHTML =
-          '<span class="disabled-hosts-title">Sites exclus</span>' +
+          `<span class="disabled-hosts-title">${this.t('disabled_sites_title')}</span>` +
           hostList
             .map((h) => {
               const safe = this._escapeHtml(h);
-              return `<span class="host-chip" data-host="${safe}"><span class="host-chip-text">${safe}</span><button type="button" class="host-chip-remove" aria-label="Retirer ${safe}">×</button></span>`;
+              return `<span class="host-chip" data-host="${safe}"><span class="host-chip-text">${safe}</span><button type="button" class="host-chip-remove" aria-label="${this._escapeHtml(this.t('chip_remove_aria', { host: safe }))}">×</button></span>`;
             })
             .join('');
         chips.querySelectorAll('.host-chip-remove').forEach((btn) => {
@@ -1160,7 +1509,7 @@ class PopupManager {
             this.settings.disabledHosts = (this.settings.disabledHosts || []).filter((x) => String(x) !== raw);
             await this.saveSettings();
             await this.refreshExtensionControlBar();
-            this.showToast(`« ${raw} » retiré des exclusions. Rechargez l’onglet si besoin.`, 'success');
+            this.showToast(this.t('ext_site_removed', { host: raw }), 'success');
           });
         });
       }
@@ -1176,8 +1525,8 @@ class PopupManager {
         await this.saveSettings();
         this.showToast(
           this.settings.extensionDisabled
-            ? 'Extension désactivée partout. Rechargez les pages ouvertes pour appliquer.'
-            : 'Extension réactivée. Rechargez les pages ouvertes pour appliquer.',
+            ? this.t('toast_ext_disabled_everywhere')
+            : this.t('toast_ext_enabled_everywhere'),
           'info'
         );
         await this.refreshExtensionControlBar();
@@ -1192,10 +1541,10 @@ class PopupManager {
         const idx = hosts.findIndex((x) => this._normalizeHostKey(x) === nh);
         if (idx === -1) {
           hosts.push(h);
-          this.showToast(`MangaCentral est désactivé sur ${h}. Rechargez l’onglet.`, 'info');
+          this.showToast(this.t('ext_site_disabled', { host: h }), 'info');
         } else {
           hosts.splice(idx, 1);
-          this.showToast(`MangaCentral est réactivé sur ${h}. Rechargez l’onglet.`, 'info');
+          this.showToast(this.t('ext_site_enabled', { host: h }), 'info');
         }
         this.settings.disabledHosts = hosts;
         await this.saveSettings();
@@ -1206,8 +1555,10 @@ class PopupManager {
 
   // ===== SETTINGS (onglet Paramètres) =====
   setupSettings() {
+    const displayLangEl = document.getElementById('displayLang');
     const speedEl = document.getElementById('defaultScrollSpeed');
     const speedValueEl = document.getElementById('speedValue');
+    if (displayLangEl) displayLangEl.value = this.settings.displayLang || 'fr';
     if (speedEl && speedValueEl) {
       speedEl.value = this.settings.autoScrollSpeed;
       speedValueEl.textContent = this.settings.autoScrollSpeed;
@@ -1219,14 +1570,22 @@ class PopupManager {
     if (langEl) langEl.value = this.settings.translationLang;
 
     document.getElementById('saveSettingsBtn')?.addEventListener('click', async () => {
+      const displayLang = displayLangEl ? String(displayLangEl.value || 'fr') : (this.settings.displayLang || 'fr');
       const speed = document.getElementById('defaultScrollSpeed').value;
       const apiKey = document.getElementById('geminiApiKey').value.trim();
       const lang = document.getElementById('translationLang').value;
+      this.settings.displayLang = (displayLang === 'en') ? 'en' : 'fr';
       this.settings.autoScrollSpeed = parseInt(speed, 10);
       this.settings.geminiApiKey = apiKey;
       this.settings.translationLang = lang;
       await this.saveSettings();
-      this.showToast('Paramètres enregistrés !', 'success');
+      await this.refreshExtensionControlBar();
+      this.applyI18nStatic();
+      this.renderDashboard();
+      this.renderLibrary();
+      this.renderHistory();
+      this.renderCustomSitesPreview();
+      this.showToast(this.t('settings_saved'), 'success');
     });
   }
 
@@ -1271,7 +1630,7 @@ class PopupManager {
     const name = document.getElementById('siteName').value.trim();
     const domain = document.getElementById('siteDomain').value.trim();
     if (!name || !domain) {
-      this.showToast('Nom et domaine sont obligatoires.', 'error');
+      this.showToast(this.t('site_required_err'), 'error');
       return;
     }
     const siteData = {
@@ -1303,7 +1662,7 @@ class PopupManager {
 
   async deleteCustomSite(id) {
     const site = this.customSites.find(s => s.id === id);
-    if (!site || !confirm(`Supprimer "${site.name}" ?`)) return;
+    if (!site || !confirm(this.t('custom_sites_delete_confirm', { name: site.name }))) return;
     this.customSites = this.customSites.filter(s => s.id !== id);
     await chrome.storage.local.set({ customSites: this.customSites });
     this.renderCustomSitesPreview();
@@ -1315,8 +1674,8 @@ class PopupManager {
     if (this.customSites.length === 0) {
       container.innerHTML = `
         <div class="empty-state">
-          <p>🛠️ Aucun site personnalisé</p>
-          <small>Cliquez sur "+ Ajouter un site" pour en configurer un.</small>
+          <p>${this.t('custom_sites_empty')}</p>
+          <small>${this.t('custom_sites_empty_hint')}</small>
         </div>
       `;
       return;
@@ -1329,8 +1688,8 @@ class PopupManager {
           <div class="site-card-domain">${this._escapeHtml(site.domain)}</div>
         </div>
         <div class="site-card-actions">
-          <button type="button" class="edit-site" title="Modifier">✏️</button>
-          <button type="button" class="delete-site" title="Supprimer">🗑️</button>
+          <button type="button" class="edit-site" title="${this.t('common_edit')}">✏️</button>
+          <button type="button" class="delete-site" title="${this.t('common_delete')}">🗑️</button>
         </div>
       </div>
     `).join('');

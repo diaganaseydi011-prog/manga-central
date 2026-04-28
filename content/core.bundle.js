@@ -551,6 +551,67 @@
       this._resizeState = null;
       this._dockDragState = null;
       this._dockState = { enabled: true, side: "right", collapsed: false, top: null, freePos: null };
+      this.lang = "fr";
+    }
+    setLang(lang) {
+      const l = String(lang || "").toLowerCase();
+      this.lang = l === "en" ? "en" : "fr";
+    }
+    t(key, vars = {}) {
+      const dict = {
+        fr: {
+          crop_hint: "Sélectionnez une zone à traduire (Echap pour annuler)",
+          dock_handle: "Faire glisser pour déplacer / Cliquer pour cacher",
+          top: "Haut",
+          bottom: "Bas",
+          top_title: "Haut de page",
+          bottom_title: "Bas de page",
+          scroll_title: "Auto-Scroll",
+          ocr_title: "Scanner & Traduire",
+          btn_size: "Taille boutons",
+          btn_size_title: "Taille des boutons",
+          translation: "Traduction",
+          resize_width: "Largeur",
+          resize_height: "Hauteur",
+          resize_corner: "Redimensionner (proportionnel)",
+          ocr_capture: "🔍 Capture en cours…",
+          ocr_crop: "✂️ Recadrage…",
+          ocr_translate: "🤖 Traduction…",
+          ext_reloaded_retry: "L'extension a été rechargée. Rechargez la page du manga (F5) puis réessayez.",
+          capture_failed: "Impossible de capturer l'écran",
+          no_translation_response: "Aucune réponse du service de traduction.",
+          ext_updated_retry: "L'extension a été rechargée ou mise à jour.\n\nRechargez la page du manga (F5) puis réessayez la traduction.",
+          error_prefix: "Erreur : {msg}"
+        },
+        en: {
+          crop_hint: "Select an area to translate (Esc to cancel)",
+          dock_handle: "Drag to move / Click to hide",
+          top: "Top",
+          bottom: "Bottom",
+          top_title: "Top of page",
+          bottom_title: "Bottom of page",
+          scroll_title: "Auto-scroll",
+          ocr_title: "Scan & translate",
+          btn_size: "Button size",
+          btn_size_title: "Button size",
+          translation: "Translation",
+          resize_width: "Width",
+          resize_height: "Height",
+          resize_corner: "Resize (proportional)",
+          ocr_capture: "🔍 Capturing…",
+          ocr_crop: "✂️ Cropping…",
+          ocr_translate: "🤖 Translating…",
+          ext_reloaded_retry: "The extension was reloaded. Reload the manga page (F5) and try again.",
+          capture_failed: "Could not capture the screen",
+          no_translation_response: "No response from the translation service.",
+          ext_updated_retry: "The extension was reloaded or updated.\n\nReload the manga page (F5) and try translating again.",
+          error_prefix: "Error: {msg}"
+        }
+      };
+      const table = dict[this.lang] || dict.fr;
+      let out = table[key] || dict.fr[key] || key;
+      for (const [k, v] of Object.entries(vars || {})) out = out.replaceAll(`{${k}}`, String(v));
+      return out;
     }
     init(meta) {
       const host = document.createElement("div");
@@ -572,10 +633,10 @@
       container.innerHTML = `
         <div id="crop-layer" class="mc-crop-layer" style="display:none;">
           <div id="crop-selection" class="mc-crop-selection"></div>
-          <div class="mc-crop-hint">Sélectionnez une zone à traduire (Echap pour annuler)</div>
+          <div class="mc-crop-hint">${this.t("crop_hint")}</div>
         </div>
         <div class="mc-floating-panel mc-docked" data-dock-side="right">
-          <div id="mc-dock-handle" class="mc-dock-handle" title="Faire glisser pour déplacer / Cliquer pour cacher"></div>
+          <div id="mc-dock-handle" class="mc-dock-handle" title="${this.t("dock_handle")}"></div>
           <div class="mc-panel-header">
             <span class="mc-icon">📚</span>
             <div class="mc-info">
@@ -583,15 +644,16 @@
               <span class="mc-chapter">Ch. ${meta.chapter}</span>
             </div>
           </div>
-          <div id="mc-resize-right" class="mc-resize-right" title="Largeur"></div>
-          <div id="mc-resize-bottom" class="mc-resize-bottom" title="Hauteur"></div>
-          <div id="mc-resize-corner" class="mc-resize-corner" title="Redimensionner (proportionnel)"></div>
+          <div id="mc-resize-right" class="mc-resize-right" title="${this.t("resize_width")}"></div>
+          <div id="mc-resize-bottom" class="mc-resize-bottom" title="${this.t("resize_height")}"></div>
+          <div id="mc-resize-corner" class="mc-resize-corner" title="${this.t("resize_corner")}"></div>
           <div class="mc-controls-wrap">
             <div class="mc-controls">
-              <button type="button" id="btn-top" class="mc-btn" title="Haut de page"><span class="mc-btn-icon">⬆</span>Haut</button>
+              <button type="button" id="btn-top" class="mc-btn" title="${this.t("top_title")}"><span class="mc-btn-icon">⬆</span>${this.t("top")}</button>
               <button type="button" id="btn-scroll" class="mc-btn" title="Auto-Scroll"><span class="mc-btn-icon">📜</span>Scroll</button>
-              <button type="button" id="btn-ocr" class="mc-btn" title="Scanner & Traduire"><span class="mc-btn-icon">🔍</span>OCR</button>
-              <button type="button" id="btn-bottom" class="mc-btn" title="Bas de page"><span class="mc-btn-icon">⬇</span>Bas</button>
+              <button type="button" id="btn-scroll" class="mc-btn" title="${this.t("scroll_title")}"><span class="mc-btn-icon">📜</span>Scroll</button>
+              <button type="button" id="btn-ocr" class="mc-btn" title="${this.t("ocr_title")}"><span class="mc-btn-icon">🔍</span>OCR</button>
+              <button type="button" id="btn-bottom" class="mc-btn" title="${this.t("bottom_title")}"><span class="mc-btn-icon">⬇</span>${this.t("bottom")}</button>
             </div>
           </div>
           <div class="mc-speed-control" id="speed-control" style="display:none;">
@@ -599,13 +661,13 @@
           </div>
           <div class="mc-ui-tweaks" id="ui-tweaks">
             <div class="mc-ui-row">
-              <span class="mc-ui-label">Taille boutons</span>
-              <input type="range" min="80" max="140" value="100" id="range-btnscale" title="Taille des boutons">
+              <span class="mc-ui-label">${this.t("btn_size")}</span>
+              <input type="range" min="80" max="140" value="100" id="range-btnscale" title="${this.t("btn_size_title")}">
             </div>
           </div>
         </div>
         <div id="translation-popup" class="mc-translation-popup" style="display:none;">
-          <div class="mc-translation-header"><span>Traduction</span><button id="close-trans">×</button></div>
+          <div class="mc-translation-header"><span>${this.t("translation")}</span><button id="close-trans">×</button></div>
           <div id="translation-content" class="mc-translation-content">...</div>
         </div>
       `;
@@ -1305,18 +1367,18 @@
       const rect = selection.getBoundingClientRect();
       this.stopCropMode();
       if (rect.width < 10 || rect.height < 10) return;
-      this.showTranslation("🔍 Capture en cours…", true);
+      this.showTranslation(this.t("ocr_capture"), true);
       try {
         if (!((_a = chrome == null ? void 0 : chrome.runtime) == null ? void 0 : _a.id)) {
-          this.showTranslation("L'extension a été rechargée. Rechargez la page du manga (F5) puis réessayez.");
+          this.showTranslation(this.t("ext_reloaded_retry"));
           return;
         }
         const response = await chrome.runtime.sendMessage({ type: "CAPTURE_TAB" });
         if (!response || !response.dataUrl) {
-          const errMsg = response && response.error ? response.error : "Impossible de capturer l'écran";
+          const errMsg = response && response.error ? response.error : this.t("capture_failed");
           throw new Error(errMsg);
         }
-        this.showTranslation("✂️ Recadrage…", true);
+        this.showTranslation(this.t("ocr_crop"), true);
         const croppedDataUrl = await this._cropImage(response.dataUrl, rect);
         const cacheKey = croppedDataUrl.slice(-120);
         if (!this._ocrCache) this._ocrCache = /* @__PURE__ */ new Map();
@@ -1325,15 +1387,15 @@
           return;
         }
         if (!((_b = chrome == null ? void 0 : chrome.runtime) == null ? void 0 : _b.id)) {
-          this.showTranslation("L'extension a été rechargée. Rechargez la page du manga (F5) puis réessayez.");
+          this.showTranslation(this.t("ext_reloaded_retry"));
           return;
         }
-        this.showTranslation("🤖 Traduction…", true);
+        this.showTranslation(this.t("ocr_translate"), true);
         const translationResponse = await chrome.runtime.sendMessage({
           type: "TRANSLATE_TEXT",
           payload: { image: croppedDataUrl }
         });
-        const text = translationResponse && translationResponse.translation ? translationResponse.translation : "Aucune réponse du service de traduction.";
+        const text = translationResponse && translationResponse.translation ? translationResponse.translation : this.t("no_translation_response");
         this.showTranslation(text);
         if (this._ocrCache.size >= 30) {
           this._ocrCache.delete(this._ocrCache.keys().next().value);
@@ -1343,9 +1405,9 @@
         console.error(err);
         const msg = err && err.message ? err.message : String(err);
         if (msg.includes("Extension context invalidated") || msg.includes("context invalidated")) {
-          this.showTranslation("L'extension a été rechargée ou mise à jour.\n\nRechargez la page du manga (F5) puis réessayez la traduction.");
+          this.showTranslation(this.t("ext_updated_retry"));
         } else {
-          this.showTranslation("Erreur : " + msg);
+          this.showTranslation(this.t("error_prefix", { msg }));
         }
       }
     }
@@ -1513,6 +1575,7 @@
     const parser = await ParserFactory.getParser(window.location.href, document);
     const autoScroller = new AutoScroller();
     const ui = new UIManager(parser, autoScroller);
+    if (ui && typeof ui.setLang === "function") ui.setLang(settings.displayLang || "fr");
     try {
       const result = await detectAndApply(ui);
       if (result) {
