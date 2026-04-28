@@ -120,7 +120,6 @@ export default class UIManager {
           <div class="mc-controls-wrap">
             <div class="mc-controls">
               <button type="button" id="btn-top" class="mc-btn" title="${this.t('top_title')}"><span class="mc-btn-icon">⬆</span>${this.t('top')}</button>
-              <button type="button" id="btn-scroll" class="mc-btn" title="Auto-Scroll"><span class="mc-btn-icon">📜</span>Scroll</button>
               <button type="button" id="btn-scroll" class="mc-btn" title="${this.t('scroll_title')}"><span class="mc-btn-icon">📜</span>Scroll</button>
               <button type="button" id="btn-ocr" class="mc-btn" title="${this.t('ocr_title')}"><span class="mc-btn-icon">🔍</span>OCR</button>
               <button type="button" id="btn-bottom" class="mc-btn" title="${this.t('bottom_title')}"><span class="mc-btn-icon">⬇</span>${this.t('bottom')}</button>
