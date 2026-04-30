@@ -25,14 +25,16 @@
   position: fixed;
   bottom: 20px;
   right: 20px;
-  width: 280px;
-  background: #0f1419;
+  width: 310px;
+  background: rgba(15, 20, 25, 0.85);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
   color: #e6edf3;
   border-radius: 20px;
   padding: 0;
   box-shadow:
-    0 0 0 1px rgba(255, 255, 255, 0.06),
-    0 16px 48px rgba(0, 0, 0, 0.5),
+    0 0 0 1px rgba(255, 255, 255, 0.08),
+    0 16px 48px rgba(0, 0, 0, 0.4),
     0 0 0 1px rgba(0, 245, 255, 0.12) inset;
   display: flex;
   flex-direction: column;
@@ -175,6 +177,7 @@
 }
 
 .mc-panel-header .mc-title {
+  display: block;
   font-size: 13px;
   font-weight: 600;
   color: #e6edf3;
@@ -184,11 +187,61 @@
   line-height: 1.3;
 }
 
+.mc-chapter-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 4px;
+}
+
 .mc-panel-header .mc-chapter {
   font-size: 11px;
   color: #00d4aa;
-  margin-top: 2px;
   font-weight: 500;
+}
+
+.mc-library-status-container {
+  display: flex;
+  align-items: center;
+}
+
+.mc-btn-add-lib {
+  background: rgba(0, 245, 255, 0.1);
+  border: 1px solid rgba(0, 245, 255, 0.3);
+  color: #00f5ff;
+  border-radius: 6px;
+  padding: 4px 8px;
+  font-size: 10px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: inline-flex;
+  align-items: center;
+}
+
+.mc-btn-add-lib:hover {
+  background: rgba(0, 245, 255, 0.2);
+  box-shadow: 0 0 8px rgba(0, 245, 255, 0.2);
+  transform: translateY(-1px);
+}
+
+.mc-lib-status-text {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 3px 6px;
+  border-radius: 4px;
+}
+
+.mc-lib-new {
+  color: #00f5ff;
+  background: rgba(0, 245, 255, 0.1);
+  border: 1px solid rgba(0, 245, 255, 0.2);
+}
+
+.mc-lib-ok {
+  color: #8b949e;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
 /* --- Resize handles (panel stretch / shrink) --- */
@@ -238,7 +291,7 @@
 
 .mc-controls {
   display: grid;
-  grid-template-columns: repeat(5, 1fr);
+  grid-template-columns: repeat(auto-fit, minmax(42px, 1fr));
   gap: calc(8px * var(--mc-btn-scale, 1));
 }
 

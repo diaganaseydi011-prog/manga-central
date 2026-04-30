@@ -636,7 +636,10 @@
           chapter_toggle_title: "Afficher/masquer navigation chapitre",
           btn_size: "Taille boutons",
           btn_size_title: "Taille des boutons",
-          translation: "Traduction"
+          translation: "Traduction",
+          lib_add: "+ Ajouter",
+          lib_latest: "Dispo: Ch. {latest}",
+          lib_uptodate: "À jour"
         },
         en: {
           crop_hint: "Select an area to translate (Esc to cancel)",
@@ -661,7 +664,10 @@
           chapter_toggle_title: "Show/hide chapter navigation",
           btn_size: "Button size",
           btn_size_title: "Button size",
-          translation: "Translation"
+          translation: "Translation",
+          lib_add: "+ Add to library",
+          lib_latest: "Available: Ch. {latest}",
+          lib_uptodate: "Up to date"
         }
       };
       const table = dict[this.lang] || dict.fr;
@@ -697,8 +703,11 @@
           <div class="mc-panel-header">
             <span class="mc-icon">📚</span>
             <div class="mc-info">
-              <span class="mc-title" title="${meta.title}">${meta.title}</span>
-              <span class="mc-chapter">Ch. ${meta.chapter}</span>
+              <span class="mc-title" title="${this._cleanDisplayTitle(meta.title)}">${this._cleanDisplayTitle(meta.title)}</span>
+              <div class="mc-chapter-row">
+                <span class="mc-chapter">Ch. ${meta.chapter}</span>
+                <div id="mc-library-status-container" class="mc-library-status-container"></div>
+              </div>
             </div>
           </div>
           <div id="mc-resize-right" class="mc-resize-right" title="Largeur"></div>
@@ -746,11 +755,20 @@
       this._setupResizablePanel();
       this._setupUiTweaks();
       this.applyLang();
+      this._updateLibraryStatus();
+      chrome.storage.onChanged.addListener((changes, area) => {
+        if (area === "local" && (changes.library || changes.latestChapterCache)) {
+          this._updateLibraryStatus();
+        }
+      });
     }
     /**
      * Met à jour l’affichage (titre / chapitre) et optionnellement le parser (pour DL, etc.)
      * Appelé quand l’utilisateur navigue vers un autre chapitre sans recharger la page.
      */
+    _cleanDisplayTitle(t) {
+      return (t || "").replace(/\s*[-|–—]\s*(?:read|lecture|chapter|scan|scans).*$/i, "").replace(/\s*\|.*$/i, "").trim();
+    }
     updateMeta(meta, parser = null) {
       if (parser) this.parser = parser;
       this.currentMeta = meta || this.currentMeta;
@@ -758,10 +776,51 @@
       const titleEl = this.shadowRoot.querySelector(".mc-title");
       const chapterEl = this.shadowRoot.querySelector(".mc-chapter");
       if (titleEl) {
-        titleEl.textContent = meta.title || "";
-        titleEl.setAttribute("title", meta.title || "");
+        const cleaned = this._cleanDisplayTitle(meta.title);
+        titleEl.textContent = cleaned || "";
+        titleEl.setAttribute("title", cleaned || "");
       }
       if (chapterEl) chapterEl.textContent = "Ch. " + (meta.chapter || "?");
+      this._updateLibraryStatus();
+    }
+    _normalizeTitle(t) {
+      const out = (t || "").toString().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/\s*[-|–—]\s*(?:mangamoins(?:\.[a-z]{2,})?|manga\s*moins)\s*$/i, "").replace(/\s*[|–—-]\s*(?:scan|scans|manga|manhwa|webtoon)\b.*$/i, "").replace(/\s*[-|–—]\s*(?:chapter|chapitre|chap|ch\.?)\s*\d+(?:\.\d+)?\s*.*$/i, "").replace(/\s*\b(?:chapter|chapitre|chap|ch\.?)\s*\d+(?:\.\d+)?\s*.*$/i, "").replace(/\bop\s*\d+\b/gi, "").replace(/\bop\d+\b/gi, "").replace(/\b\d+(?:\.\d+)?\b\s*$/i, "").replace(/[^a-z0-9]+/gi, " ").trim().toLowerCase();
+      return out.replace(/\bmangamoins\b/gi, "").replace(/\s+/g, " ").trim();
+    }
+    async _updateLibraryStatus() {
+      if (!this.shadowRoot || !this.currentMeta) return;
+      const container = this.shadowRoot.getElementById("mc-library-status-container");
+      if (!container) return;
+      try {
+        const { library = [], latestChapterCache = {} } = await chrome.storage.local.get(["library", "latestChapterCache"]);
+        const titleNorm = this._normalizeTitle(this.currentMeta.title);
+        const match = library.find((m) => this._normalizeTitle(m.title) === titleNorm);
+        if (!match) {
+          container.innerHTML = `<button type="button" class="mc-btn-add-lib">${this.t("lib_add")}</button>`;
+          const btn = container.querySelector(".mc-btn-add-lib");
+          btn.addEventListener("click", (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            chrome.runtime.sendMessage({ type: "ADD_TO_LIBRARY", payload: this.currentMeta }, () => {
+              this._updateLibraryStatus();
+            });
+          });
+        } else {
+          const cacheEntry = latestChapterCache[match.workKey] || latestChapterCache[match.workKeyPopup];
+          const latestDex = cacheEntry && cacheEntry.latest ? cacheEntry.latest : null;
+          if (latestDex != null) {
+            const current = parseFloat(String(this.currentMeta.chapter).replace(",", "."));
+            if (Number.isFinite(current) && latestDex > current) {
+              container.innerHTML = `<span class="mc-lib-status-text mc-lib-new">${this.t("lib_latest", { latest: latestDex })}</span>`;
+            } else {
+              container.innerHTML = `<span class="mc-lib-status-text mc-lib-ok">${this.t("lib_uptodate")}</span>`;
+            }
+          } else {
+            container.innerHTML = `<span class="mc-lib-status-text"></span>`;
+          }
+        }
+      } catch (err) {
+      }
     }
     _attachListeners(meta) {
       this.shadowRoot.getElementById("btn-top").addEventListener("click", (e) => {
@@ -1340,7 +1399,7 @@
         h.style.touchAction = "none";
         h.style.userSelect = "none";
       }
-      const MIN_W = 220;
+      const MIN_W = 280;
       const MAX_W = 560;
       const MIN_H = 180;
       const MAX_H = 640;

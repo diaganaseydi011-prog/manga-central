@@ -53,9 +53,7 @@ class PopupManager {
       translationLang: 'fr',
       extensionDisabled: false,
       disabledHosts: [],
-      displayLang: 'fr',
-      notifyNewChapters: false,
-      notifyFrequencyMinutes: 360
+      displayLang: 'fr'
     };
 
     // Dernier chapitre MangaDex détecté, alimenté par le background (notifications).
@@ -336,9 +334,6 @@ class PopupManager {
     if (typeof this.settings.extensionDisabled !== 'boolean') this.settings.extensionDisabled = false;
     if (!Array.isArray(this.settings.disabledHosts)) this.settings.disabledHosts = [];
     if (!this.settings.displayLang) this.settings.displayLang = 'fr';
-    if (typeof this.settings.notifyNewChapters !== 'boolean') this.settings.notifyNewChapters = false;
-    const nfm = this.settings.notifyFrequencyMinutes;
-    if (typeof nfm !== 'number' || !Number.isFinite(nfm)) this.settings.notifyFrequencyMinutes = 360;
   }
 
   t(key, vars = {}) {
@@ -369,10 +364,6 @@ class PopupManager {
         settings_gemini_key: 'Clé API Gemini (traduction)',
         settings_gemini_key_placeholder: 'Clé API...',
         settings_translation_lang: 'Langue de traduction',
-        settings_notify_new_chapters: 'Alertes nouveaux chapitres',
-        settings_notify_new_chapters_hint: 'Notification navigateur lorsqu’un manga « En cours » a un chapitre plus récent sur MangaDex que ta progression enregistrée.',
-        settings_notify_frequency: 'Vérifier toutes les',
-        settings_notify_frequency_hint: 'Minimum 15 minutes. L’alarme fonctionne même sans onglet ouvert (Chrome).',
         settings_save: 'Enregistrer',
         settings_custom_sites: 'Sites personnalisés',
         settings_add_custom_site: '+ Ajouter un site',
@@ -470,7 +461,17 @@ class PopupManager {
         parser_test_domain_mismatch: 'Attention: le site configure ({site}) ne correspond pas au domaine courant ({tab}).',
         parser_test_result_title: 'Resultat test parser',
         parser_test_ok: 'Parser fonctionnel',
-        parser_test_issue: 'Parser a verifier'
+        parser_test_issue: 'Parser a verifier',
+
+        settings_anilist_token: 'Jeton AniList (Optionnel)',
+        settings_anilist_token_placeholder: 'Jeton d\'accès personnel...',
+        settings_sync_anilist: 'Forcer la synchro AniList',
+        settings_anilist_not_connected: 'Non connecté',
+        settings_anilist_connected: 'Connecté',
+        settings_anilist_login: 'Se connecter avec AniList',
+        settings_anilist_logout: 'Déconnexion AniList',
+        toast_sync_started: 'Synchro AniList lancée...',
+        toast_sync_done: 'Synchro AniList terminée !'
       },
       en: {
         toast_ext_disabled_everywhere: 'Extension disabled everywhere. Reload open pages to apply.',
@@ -497,10 +498,6 @@ class PopupManager {
         settings_gemini_key: 'Gemini API key (translation)',
         settings_gemini_key_placeholder: 'API key...',
         settings_translation_lang: 'Translation language',
-        settings_notify_new_chapters: 'New chapter alerts',
-        settings_notify_new_chapters_hint: 'Browser notification when a « Reading » title has a newer chapter on MangaDex than your saved progress.',
-        settings_notify_frequency: 'Check every',
-        settings_notify_frequency_hint: 'Minimum 15 minutes. The alarm runs in the background (Chrome).',
         settings_save: 'Save',
         settings_custom_sites: 'Custom sites',
         settings_add_custom_site: '+ Add a site',
@@ -598,7 +595,17 @@ class PopupManager {
         parser_test_domain_mismatch: 'Warning: configured site ({site}) does not match current domain ({tab}).',
         parser_test_result_title: 'Parser test result',
         parser_test_ok: 'Parser looks good',
-        parser_test_issue: 'Parser needs review'
+        parser_test_issue: 'Parser needs review',
+
+        settings_anilist_token: 'AniList Token (Optional)',
+        settings_anilist_token_placeholder: 'Personal access token...',
+        settings_sync_anilist: 'Force AniList sync',
+        settings_anilist_not_connected: 'Not connected',
+        settings_anilist_connected: 'Connected',
+        settings_anilist_login: 'Login with AniList',
+        settings_anilist_logout: 'Logout from AniList',
+        toast_sync_started: 'AniList sync started...',
+        toast_sync_done: 'AniList sync finished!'
       }
     };
     const table = dict[lang] || dict.fr;
@@ -881,8 +888,7 @@ class PopupManager {
         <img src="${COVER_PLACEHOLDER}" data-mc-src="${(manga.cover && manga.cover.trim()) ? this._escapeHtml(manga.cover) : ''}" data-mc-referer="${referer}" class="manga-cover" alt="${manga.title}">
         <div class="manga-info">
           <h3>${this._escapeHtml(manga.title)}</h3>
-          <p class="manga-latest">${this.t('chapter_short')} ${mainChapter || '?'}</p>
-          ${latestLine ? `<p class="manga-available">${this._escapeHtml(latestLine)}</p>` : ''}
+          ${latestLine ? `<p class="manga-available">${this._escapeHtml(latestLine)}</p>` : `<p class="manga-latest">${this.t('chapter_short')} ${mainChapter || '?'}</p>`}
           ${recent.length ? `<div class="manga-recent-chapters">${recent.filter(r => String(r.ch) !== mainChapterStr).map(r => r.url ? `<a href="${this._escapeHtml(r.url)}" class="manga-recent-chap" data-url="${this._escapeHtml(r.url)}">${this.t('chapter_short')} ${this._escapeHtml(r.ch)}</a>` : `<span class="manga-recent-chap">${this.t('chapter_short')} ${this._escapeHtml(r.ch)}</span>`).join('')}</div>` : ''}
         </div>
       </div>
@@ -1751,24 +1757,7 @@ class PopupManager {
     if (apiKeyEl) apiKeyEl.value = this.settings.geminiApiKey || '';
     if (langEl) langEl.value = this.settings.translationLang;
 
-    const notifyChk = document.getElementById('notifyNewChapters');
-    const freqSelect = document.getElementById('notifyFrequencyMinutes');
-    const NOTIFY_FREQ_PRESETS = [15, 30, 60, 180, 360, 720, 1440];
-    const syncNotifyFreqSelect = () => {
-      if (!freqSelect) return;
-      const raw = Number(this.settings.notifyFrequencyMinutes);
-      let m = NOTIFY_FREQ_PRESETS.includes(raw) ? raw : NOTIFY_FREQ_PRESETS.reduce((best, v) =>
-        (Math.abs(v - raw) < Math.abs(best - raw) ? v : best), 360);
-      freqSelect.value = String(m);
-    };
-    if (notifyChk) {
-      notifyChk.checked = !!this.settings.notifyNewChapters;
-      syncNotifyFreqSelect();
-      if (freqSelect) freqSelect.disabled = !notifyChk.checked;
-      notifyChk.addEventListener('change', () => {
-        if (freqSelect) freqSelect.disabled = !notifyChk.checked;
-      });
-    }
+    // Notification elements removed
 
     if (displayLangEl) {
       displayLangEl.addEventListener('change', async () => {
@@ -1788,17 +1777,11 @@ class PopupManager {
       const speed = document.getElementById('defaultScrollSpeed').value;
       const apiKey = document.getElementById('geminiApiKey').value.trim();
       const lang = document.getElementById('translationLang').value;
-      const nCh = document.getElementById('notifyNewChapters');
-      const nFreq = document.getElementById('notifyFrequencyMinutes');
       this.settings.displayLang = (displayLang === 'en') ? 'en' : 'fr';
       this.settings.autoScrollSpeed = parseInt(speed, 10);
       this.settings.geminiApiKey = apiKey;
       this.settings.translationLang = lang;
-      this.settings.notifyNewChapters = !!(nCh && nCh.checked);
-      const fm = nFreq ? parseInt(nFreq.value, 10) : 360;
-      this.settings.notifyFrequencyMinutes = Number.isFinite(fm) ? fm : 360;
       await this.saveSettings();
-      chrome.runtime.sendMessage({ type: 'SCHEDULE_NOTIFY_ALARM' }, () => void chrome.runtime.lastError);
       this.applyI18n();
       this.renderDashboard();
       this.renderLibrary();
@@ -1807,6 +1790,59 @@ class PopupManager {
       await this.refreshExtensionControlBar();
       this.showToast(this.t('settings_saved'), 'success');
     });
+
+    document.getElementById('syncAnilistBtn')?.addEventListener('click', () => {
+      this.showToast(this.t('toast_sync_started'), 'info');
+      chrome.runtime.sendMessage({ type: 'SYNC_ANILIST' }, (res) => {
+        if (res && res.ok) {
+          this.showToast(this.t('toast_sync_done'), 'success');
+        } else {
+          this.showToast(this.t('search_error'), 'error');
+        }
+      });
+    });
+
+    const loginAnilistBtn = document.getElementById('loginAnilistBtn');
+    const logoutAnilistBtn = document.getElementById('logoutAnilistBtn');
+    const anilistStatusText = document.getElementById('anilistStatusText');
+
+    const updateAnilistUI = () => {
+      if (this.settings.anilistToken) {
+        anilistStatusText.setAttribute('data-i18n', 'settings_anilist_connected');
+        anilistStatusText.textContent = this.t('settings_anilist_connected');
+        anilistStatusText.style.color = '#50fa7b';
+        loginAnilistBtn.style.display = 'none';
+        logoutAnilistBtn.style.display = 'block';
+      } else {
+        anilistStatusText.setAttribute('data-i18n', 'settings_anilist_not_connected');
+        anilistStatusText.textContent = this.t('settings_anilist_not_connected');
+        anilistStatusText.style.color = '#8b949e';
+        loginAnilistBtn.style.display = 'block';
+        logoutAnilistBtn.style.display = 'none';
+      }
+    };
+
+    if (loginAnilistBtn) {
+      updateAnilistUI();
+      
+      loginAnilistBtn.addEventListener('click', () => {
+        chrome.runtime.sendMessage({ type: 'LOGIN_ANILIST' }, async (res) => {
+          if (res && res.ok) {
+            await this.loadData();
+            updateAnilistUI();
+            this.showToast(this.t('settings_saved'), 'success');
+          } else {
+            this.showToast(this.t('search_error'), 'error');
+          }
+        });
+      });
+
+      logoutAnilistBtn.addEventListener('click', async () => {
+        this.settings.anilistToken = '';
+        await this.saveSettings();
+        updateAnilistUI();
+      });
+    }
   }
 
   // ===== CUSTOM SITES (tout dans le popup, pas de nouvelle URL) =====

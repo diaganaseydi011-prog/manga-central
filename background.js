@@ -105,17 +105,6 @@ function idFromTitleAndChapter(title, chapter) {
   return result;
 }
 
-// --- Notifications nouveau chapitre (baseline + MangaDex) ---
-const NOTIFY_ALARM = 'mc_notify_new_chapters';
-
-function clampNotifyPeriodMinutes(raw) {
-  const n = parseInt(raw, 10);
-  if (!Number.isFinite(n)) return 360;
-  if (n < 15) return 15;
-  if (n > 7 * 24 * 60) return 7 * 24 * 60;
-  return n;
-}
-
 function sleep(ms) {
   return new Promise((r) => setTimeout(r, ms));
 }
@@ -396,173 +385,10 @@ async function mangaDexLatestChapterNumber(mangaId) {
   return Number.isFinite(n) ? n : NaN;
 }
 
-async function scheduleNotifyAlarm() {
-  const { settings = {} } = await chrome.storage.local.get('settings');
-  await chrome.alarms.clear(NOTIFY_ALARM);
-  if (!settings.notifyNewChapters) return;
-  const periodMinutes = clampNotifyPeriodMinutes(settings.notifyFrequencyMinutes);
-  chrome.alarms.create(NOTIFY_ALARM, { periodInMinutes: periodMinutes });
-}
-
-async function runNewChapterChecks() {
-  const {
-    library = [],
-    settings = {},
-    chapterNotifyBaseline = {},
-    notifyClickUrls = {},
-    latestChapterCache = {}
-  } = await chrome.storage.local.get([
-    'library',
-    'settings',
-    'chapterNotifyBaseline',
-    'notifyClickUrls',
-    'latestChapterCache'
-  ]);
-
-  if (!settings.notifyNewChapters) return;
-
-  let baseline = chapterNotifyBaseline && typeof chapterNotifyBaseline === 'object' ? { ...chapterNotifyBaseline } : {};
-  let clickUrls =
-    notifyClickUrls && typeof notifyClickUrls === 'object' ? { ...notifyClickUrls } : {};
-  let latestCache =
-    latestChapterCache && typeof latestChapterCache === 'object' ? { ...latestChapterCache } : {};
-  const readings = library.filter((m) => (m.status || '') === 'reading' && String(m.title || '').trim());
-
-  const iconUrl = chrome.runtime.getURL('assets/icons/icon128.png');
-
-  for (const manga of readings) {
-    const workKey = manga.workKey || getWorkKey(manga.title, manga.url);
-    if (!workKey) continue;
-
-    const fc = manga.furthestChapter;
-    const lc = manga.lastChapter;
-    const userRead = Math.max(
-      parseFloat(String(fc != null ? fc : '').replace(',', '.')) || 0,
-      parseFloat(String(lc != null ? lc : '').replace(',', '.')) || 0
-    );
-
-    await sleep(400);
-    let mangaId;
-    try {
-      mangaId = await mangaDexFindMangaId(manga.title);
-    } catch (_) {
-      continue;
-    }
-    if (!mangaId) continue;
-
-    await sleep(200);
-    let latest = NaN;
-    try {
-      latest = await mangaDexLatestChapterNumber(mangaId);
-    } catch (_) {
-      latest = NaN;
-    }
-
-    if (!Number.isFinite(latest)) {
-      await sleep(150);
-      try {
-        const fallbackLatest = await scrapeLatestChapterFromSourceSite(manga.url);
-        if (Number.isFinite(fallbackLatest)) latest = fallbackLatest;
-      } catch (_) {
-        // ignore
-      }
-    }
-
-    if (!Number.isFinite(latest)) continue;
-
-    // Cache pour l'UI : dernier chapitre MangaDex trouvé pour cet oeuvre.
-    // On stocke sous plusieurs clés pour matcher le popup même si la normalisation diffère.
-    latestCache[workKey] = { latest, updatedAt: Date.now() };
-    const workKeyPopup = getPopupWorkKey(manga.title, manga.url);
-    if (workKeyPopup && workKeyPopup !== workKey) {
-      latestCache[workKeyPopup] = { latest, updatedAt: Date.now() };
-    }
-
-    if (baseline[workKey] === undefined || baseline[workKey] === null) {
-      baseline[workKey] = latest;
-      continue;
-    }
-
-    if (latest <= userRead) {
-      // Certaines sources (ou matches MangaDex approximatifs) peuvent retourner
-      // un "latest" inférieur à la progression utilisateur.
-      // On conserve une valeur cohérente pour l'UI et on évite toute régression.
-      const stableLatest = Math.max(latest, userRead);
-      latestCache[workKey] = { latest: stableLatest, updatedAt: Date.now() };
-      if (workKeyPopup && workKeyPopup !== workKey) {
-        latestCache[workKeyPopup] = { latest: stableLatest, updatedAt: Date.now() };
-      }
-      baseline[workKey] = Math.max(Number(baseline[workKey]) || 0, stableLatest);
-      continue;
-    }
-
-    if (latest <= Number(baseline[workKey])) continue;
-
-    const titleSuffix = manga.title ? String(manga.title) : 'Manga';
-    const notifId = `mc-nc-${Date.now()}-${Math.random().toString(16).slice(2)}`;
-    const openUrl = String(manga.url || '').trim() || 'https://mangadex.org/title/' + encodeURIComponent(mangaId);
-    clickUrls[notifId] = openUrl;
-    if (Object.keys(clickUrls).length > 80) {
-      const keys = Object.keys(clickUrls).slice(-60);
-      const next = {};
-      keys.forEach((k) => {
-        next[k] = clickUrls[k];
-      });
-      clickUrls = next;
-    }
-
-    const msg =
-      userRead > 0
-        ? `${titleSuffix} — Nouveau chapitre : ${latest} (tu es au Ch. ${userRead})`
-        : `${titleSuffix} — Nouveau chapitre : ${latest}`;
-
-    const fallbackId = notifId + '-n';
-    try {
-      await chrome.notifications.create(notifId, {
-        type: 'basic',
-        iconUrl,
-        title: 'MangaCentral',
-        message: msg
-      });
-    } catch (_) {
-      clickUrls[fallbackId] = openUrl;
-      await chrome.notifications.create(fallbackId, {
-        type: 'basic',
-        title: 'MangaCentral',
-        message: `${titleSuffix} — Ch. ${latest}`
-      });
-    }
-
-    baseline[workKey] = latest;
-  }
-
-  // Empêche le stockage de grossir indéfiniment.
-  try {
-    const keys = Object.keys(latestCache);
-    if (keys.length > 250) {
-      keys.sort((a, b) => {
-        const ta = latestCache[a] && latestCache[a].updatedAt ? latestCache[a].updatedAt : 0;
-        const tb = latestCache[b] && latestCache[b].updatedAt ? latestCache[b].updatedAt : 0;
-        return tb - ta;
-      });
-      const keep = keys.slice(0, 220);
-      const next = {};
-      keep.forEach((k) => {
-        next[k] = latestCache[k];
-      });
-      latestCache = next;
-    }
-  } catch (_) {
-    // best-effort only
-  }
-
-  await chrome.storage.local.set({ chapterNotifyBaseline: baseline, notifyClickUrls: clickUrls, latestChapterCache: latestCache });
-}
-
-// Met a jour le cache des derniers chapitres (sans envoyer de notifications).
+// Met a jour le cache des derniers chapitres.
 async function refreshLatestChapterCache(options = {}) {
   const force = !!(options && options.force);
-  const maxAgeMinutes = clampNotifyPeriodMinutes((options && options.maxAgeMinutes) || 180);
+  const maxAgeMinutes = Math.max(15, (options && options.maxAgeMinutes) || 180);
   const maxAgeMs = maxAgeMinutes * 60 * 1000;
   const now = Date.now();
 
@@ -692,45 +518,18 @@ chrome.runtime.onInstalled.addListener(() => {
       translationLang: prev.translationLang || 'fr',
       extensionDisabled: prev.extensionDisabled === true,
       disabledHosts: Array.isArray(prev.disabledHosts) ? prev.disabledHosts : [],
-      displayLang: prev.displayLang || 'fr',
-      notifyNewChapters: typeof prev.notifyNewChapters === 'boolean' ? prev.notifyNewChapters : false,
-      notifyFrequencyMinutes: clampNotifyPeriodMinutes(prev.notifyFrequencyMinutes ?? 360)
+      displayLang: prev.displayLang || 'fr'
     };
 
     chrome.storage.local.set(setObj);
-    scheduleNotifyAlarm();
   });
 });
 
-chrome.runtime.onStartup.addListener(() => {
-  scheduleNotifyAlarm();
-});
-
-chrome.alarms.onAlarm.addListener((alarm) => {
-  if (alarm && alarm.name === NOTIFY_ALARM) {
-    runNewChapterChecks().catch(() => {});
-  }
-});
-
-chrome.storage.onChanged.addListener((changes, area) => {
-  if (area !== 'local' || !changes.settings) return;
-  scheduleNotifyAlarm();
-});
-
-chrome.notifications.onClicked.addListener((notificationId) => {
-  chrome.storage.local.get(['notifyClickUrls'], (result) => {
-    const map = result.notifyClickUrls || {};
-    const url = map[notificationId] || 'https://mangadex.org';
-    chrome.tabs.create({ url: String(url) });
-  });
-});
+// Notifications and Alarms removed
 
 // 2. Gestion des Messages
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   switch (message.type) {
-    case 'SCHEDULE_NOTIFY_ALARM':
-      scheduleNotifyAlarm().then(() => sendResponse({ ok: true })).catch(() => sendResponse({ ok: false }));
-      return true;
     case 'REFRESH_LATEST_CHAPTER_CACHE':
       refreshLatestChapterCache(message && message.payload ? message.payload : {})
         .then((res) => sendResponse(res || { ok: true }))
@@ -744,6 +543,59 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     case 'CHAPTER_DETECTED':
       StorageService.handleChapterDetected(message.payload, sender);
       break;
+    case 'SYNC_ANILIST':
+      AnilistService.syncManual(sendResponse);
+      return true;
+    case 'LOGIN_ANILIST':
+      const clientId = '40372';
+      const authUrl = `https://anilist.co/api/v2/oauth/authorize?client_id=${clientId}&response_type=token`;
+      chrome.tabs.create({ url: authUrl, active: true }, (tab) => {
+        const authTabId = tab.id;
+        const listener = (tabId, changeInfo, updatedTab) => {
+          if (tabId === authTabId && updatedTab.url && updatedTab.url.includes('anilist.co/api/v2/oauth/pin')) {
+            const match = updatedTab.url.match(/access_token=([^&]+)/);
+            if (match && match[1]) {
+              const token = match[1];
+              chrome.storage.local.get(['settings'], (res) => {
+                const settings = res.settings || {};
+                settings.anilistToken = token;
+                chrome.storage.local.set({ settings }, () => {
+                  chrome.tabs.remove(tabId);
+                  chrome.tabs.onUpdated.removeListener(listener);
+                  sendResponse({ ok: true });
+                });
+              });
+            }
+          }
+        };
+        chrome.tabs.onUpdated.addListener(listener);
+        chrome.tabs.onRemoved.addListener(function removedListener(tabId) {
+          if (tabId === authTabId) {
+             chrome.tabs.onUpdated.removeListener(listener);
+             chrome.tabs.onRemoved.removeListener(removedListener);
+             sendResponse({ ok: false, error: 'closed' });
+          }
+        });
+      });
+      return true;
+    case 'ADD_TO_LIBRARY':
+      (async () => {
+        try {
+          const { library = [] } = await chrome.storage.local.get(['library']);
+          const target = message.payload;
+          if (!target || !target.title) return sendResponse({ ok: false });
+          const targetKey = getWorkKey(target.title, target.url);
+          const exists = library.find(m => getWorkKey(m.title, m.url) === targetKey);
+          if (!exists) {
+            library.unshift({ ...target, status: 'reading', addedAt: Date.now() });
+            await chrome.storage.local.set({ library });
+          }
+          sendResponse({ ok: true });
+        } catch (_) {
+          sendResponse({ ok: false });
+        }
+      })();
+      return true;
     case 'CAPTURE_TAB':
       OcrService.handleCaptureTab(sender, sendResponse);
       return true; // Important pour sendResponse asynchrone
@@ -822,7 +674,7 @@ function handleGetCurrentPageMeta(sendResponse) {
               /\/read\/[^/]+\/[^/]+\/\d+\/(\d+)\/?/i,
               /(?:manga|manhwa|comics?|scan-vf)\/[^/]+\/[^/]+\/(\d+)\/?/i,
               /(?:library|directory|archives|online)\/[^/]+\/[^/]+\/[^/]+\/(\d+)(?:\/|\.)/i,
-              /manga-list\/[^/]+\/[^/]+\/chapter-(\d+)\.html/i,               /(?:comic|title)\/\d+\/view\/(\d+)/i,
+              /manga-list\/[^/]+\/[^/]+\/chapter-(\d+)\.html/i, /(?:comic|title)\/\d+\/view\/(\d+)/i,
               /\/title\/\d+\/chapter\/(\d+)/i,
               /\/scan\/[^/]*?(\d+)(?:\/|$)/i,
               /(?:\/lecture|\/view|\/read)\/[^/]*?(\d+)(?:\/|$)/i,
@@ -962,8 +814,101 @@ function handleChapterDetected(meta, sender) {
     });
     const deduped = Array.from(byTitle.values());
     if (deduped.length !== library.length || inLibrary) chrome.storage.local.set({ library: deduped });
+
+    // Auto-sync Anilist if token is present
+    if (inLibrary) {
+      chrome.storage.local.get(['settings'], (res2) => {
+        const token = res2.settings?.anilistToken;
+        if (token) {
+          AnilistService.autoSyncChapter(inLibrary, meta.chapter, token);
+        }
+      });
+    }
   });
 }
+
+// --- ANILIST SYNC SERVICE ---
+const AnilistService = {
+  async getMediaId(title) {
+    try {
+      const cleanTitle = (title || '').replace(/\s*[|–—-]\s*(?:scan|scans|vf|vostfr|raw|manga|manhwa|webtoon)\b.*$/i, '').trim().slice(0, 80);
+      const query = `query($search: String) { Page(page: 1, perPage: 1) { media(type: MANGA, search: $search) { id } } }`;
+      const res = await fetch('https://graphql.anilist.co', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ query, variables: { search: cleanTitle } })
+      });
+      if (!res.ok) return null;
+      const data = await res.json();
+      return data.data?.Page?.media?.[0]?.id || null;
+    } catch (_) { return null; }
+  },
+
+  async updateProgress(mediaId, progress, token) {
+    if (!token) return false;
+    try {
+      const query = `mutation($mediaId: Int, $progress: Int) { SaveMediaListEntry(mediaId: $mediaId, progress: $progress) { id progress } }`;
+      const res = await fetch('https://graphql.anilist.co', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ query, variables: { mediaId: parseInt(mediaId, 10), progress: parseInt(progress, 10) } })
+      });
+      return res.ok;
+    } catch (_) { return false; }
+  },
+
+  async autoSyncChapter(libraryItem, chapter, token) {
+    let anilistId = libraryItem.anilistId;
+    if (!anilistId) {
+      anilistId = await this.getMediaId(libraryItem.title);
+      if (anilistId) {
+        // Cache it in library
+        chrome.storage.local.get(['library'], (res) => {
+           let lib = res.library || [];
+           const match = lib.find(m => m.workKey === libraryItem.workKey);
+           if (match) { match.anilistId = anilistId; chrome.storage.local.set({ library: lib }); }
+        });
+      }
+    }
+    if (anilistId) {
+      const chNum = parseFloat(chapter);
+      if (chNum > 0) await this.updateProgress(anilistId, Math.floor(chNum), token);
+    }
+  },
+
+  async syncManual(sendResponse) {
+    try {
+      const { library = [], settings = {} } = await chrome.storage.local.get(['library', 'settings']);
+      const token = settings.anilistToken;
+      if (!token) return sendResponse({ ok: false, error: 'no_token' });
+
+      const toSync = library.filter(m => m.status === 'reading');
+      let updated = false;
+
+      for (const m of toSync) {
+        if (!m.anilistId) {
+          m.anilistId = await this.getMediaId(m.title);
+          if (m.anilistId) updated = true;
+          await new Promise(r => setTimeout(r, 800)); // Rate limit
+        }
+        if (m.anilistId) {
+          const ch = parseFloat(m.furthestChapter) || parseFloat(m.lastChapter) || 0;
+          if (ch > 0) {
+             await this.updateProgress(m.anilistId, Math.floor(ch), token);
+             await new Promise(r => setTimeout(r, 800));
+          }
+        }
+      }
+      if (updated) await chrome.storage.local.set({ library });
+      sendResponse({ ok: true });
+    } catch (_) {
+      sendResponse({ ok: false });
+    }
+  }
+};
 
 // Services logiques regroupés par domaine (utilisés dans le switch de messages)
 const StorageService = { handleChapterDetected };
@@ -1097,7 +1042,7 @@ Rules:
           const errJson = errBody ? JSON.parse(errBody) : null;
           const err = errJson && errJson.error ? errJson.error : {};
           lastErrMsg = (err && typeof err.message === 'string') ? err.message : '';
-        } catch (_) {}
+        } catch (_) { }
 
         const msgLower = (lastErrMsg || '').toLowerCase();
         const highDemand =
@@ -1139,7 +1084,7 @@ Rules:
           });
           return;
         }
-      } catch (_) {}
+      } catch (_) { }
       // Si on a un message d'erreur plus précis des tentatives précédentes, l'afficher.
       const finalMsg = (lastErrMsg && lastErrMsg.trim()) ? lastErrMsg.trim() : errMsg;
       sendResponse({ translation: 'Erreur ' + finalMsg });

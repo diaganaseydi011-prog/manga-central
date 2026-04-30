@@ -172,26 +172,16 @@
             <option value="de">Deutsch</option>
           </select>
         </div>
-        <div class="form-row form-row-notify">
-          <label class="notify-label-wrap">
-            <input type="checkbox" id="notifyNewChapters" class="input-neon-checkbox">
-            <span data-i18n="settings_notify_new_chapters">Alertes nouveaux chapitres</span>
-          </label>
-          <p class="settings-hint" data-i18n="settings_notify_new_chapters_hint">Navigateur : notification si un manga « En cours » a un chapitre plus récent sur MangaDex (comparé à ta progression).</p>
+
+        <div class="form-row" style="margin-top: 16px;">
+          <label>Synchronisation Cloud (AniList)</label>
+          <div id="anilistStatusText" style="font-size: 13px; margin-bottom: 8px; color: #8b949e;" data-i18n="settings_anilist_not_connected">Non connecté</div>
+          <button id="loginAnilistBtn" class="btn-neon full" style="margin-bottom: 8px;" data-i18n="settings_anilist_login">Se connecter avec AniList</button>
+          <button id="logoutAnilistBtn" class="btn-ghost full" style="margin-bottom: 8px; display: none;" data-i18n="settings_anilist_logout">Déconnexion AniList</button>
         </div>
-        <div class="form-row">
-          <label for="notifyFrequencyMinutes" data-i18n="settings_notify_frequency">Vérifier toutes les</label>
-          <select id="notifyFrequencyMinutes" class="input-neon" aria-describedby="notifyFreqHint">
-            <option value="15">15 min</option>
-            <option value="30">30 min</option>
-            <option value="60">1 h</option>
-            <option value="180">3 h</option>
-            <option value="360">6 h</option>
-            <option value="720">12 h</option>
-            <option value="1440">24 h</option>
-          </select>
-          <small id="notifyFreqHint" class="settings-hint" data-i18n="settings_notify_frequency_hint">Minimum 15 minutes. Requiert une page ouverte ou le service worker (Chrome).</small>
-        </div>
+
+        <button id="syncAnilistBtn" class="btn-ghost full" style="margin-bottom: 16px;" data-i18n="settings_sync_anilist">Forcer la synchro AniList</button>
+
         <button id="saveSettingsBtn" class="btn-neon full" data-i18n="settings_save">Enregistrer</button>
         <div class="backup-actions">
           <button id="exportDataBtn" class="btn-ghost full" data-i18n="backup_export_btn">Exporter mes donnees</button>

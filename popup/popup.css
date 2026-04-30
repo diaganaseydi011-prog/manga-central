@@ -1129,25 +1129,7 @@ a.current-reading-recent-chap:hover {
   letter-spacing: 0.05em;
 }
 
-.form-row-notify label.notify-label-wrap {
-  display: flex;
-  align-items: flex-start;
-  gap: 10px;
-  flex-direction: row;
-  text-transform: none;
-  letter-spacing: normal;
-  font-size: 14px;
-  color: var(--text);
-  margin-bottom: 6px;
-  cursor: pointer;
-}
 
-.form-row-notify .input-neon-checkbox {
-  width: auto;
-  margin-top: 3px;
-  accent-color: var(--accent);
-  flex-shrink: 0;
-}
 
 .settings-hint {
   display: block;
