@@ -24,7 +24,7 @@
         <div class="counter-ring">
           <span class="counter-value" id="readingCount">0</span>
         </div>
-        <span class="counter-label" data-i18n="counter_chapters_read">Chapters read</span>
+        <span class="counter-label" data-i18n="counter_read_chapters">Chapitres lus</span>
       </div>
     </div>
     <div class="header-glow"></div>
@@ -38,11 +38,11 @@
       <div class="dashboard-control-center">
         <!-- Colonne gauche: Bibliothèque -->
         <div class="dashboard-left">
-          <h2 class="panel-title" data-i18n="dash_library_title">Library</h2>
+          <h2 class="panel-title" data-i18n="dashboard_library_title">Bibliothèque</h2>
           <div id="readingList" class="manga-grid">
             <div class="empty-state">
-              <p data-i18n="dash_empty_reading">No reading in progress</p>
-              <small data-i18n="dash_empty_reading_hint">Open a chapter to start</small>
+              <p data-i18n="dashboard_empty_reading_title">Aucune lecture en cours</p>
+              <small data-i18n="dashboard_empty_reading_subtitle">Ouvrez un chapitre pour commencer</small>
             </div>
           </div>
         </div>
@@ -50,13 +50,13 @@
         <div class="dashboard-right">
           <div class="panel-title-wrap">
             <span class="panel-title-accent"></span>
-            <h2 class="panel-title" data-i18n="dash_current_title">Currently reading</h2>
+            <h2 class="panel-title" data-i18n="dashboard_current_title">En cours de lecture</h2>
           </div>
           <div id="currentReadingBlock" class="current-reading-card">
             <div class="current-reading-placeholder">
               <div class="placeholder-icon">📚</div>
-              <p data-i18n="dash_current_empty">No manga in progress</p>
-              <small data-i18n="dash_current_empty_hint">Your current reads will appear here</small>
+              <p data-i18n="dashboard_current_empty_title">Aucun manga en cours</p>
+              <small data-i18n="dashboard_current_empty_subtitle">Vos lectures apparaîtront ici</small>
             </div>
           </div>
         </div>
@@ -66,58 +66,58 @@
     <!-- TAB: Librairie -->
     <section id="library" class="tab-content">
       <div class="section-header">
-        <h2 class="panel-title" data-i18n="library_title">My Library</h2>
+        <h2 class="panel-title" data-i18n="library_title">Ma Bibliothèque</h2>
         <div class="add-buttons">
-          <button id="addCurrentPageBtn" class="btn-neon" data-i18n="library_add_current" data-i18n-title="library_add_current_title" title="Open a chapter then click here">📄 Current page</button>
-          <button id="addManualBtn" class="btn-ghost" data-i18n="library_add_manual">✏️ Add manually</button>
+          <button id="addCurrentPageBtn" class="btn-neon" data-i18n-title="library_add_current_title" data-i18n="library_add_current_btn">📄 Page actuelle</button>
+          <button id="addManualBtn" class="btn-ghost" data-i18n="library_add_manual_btn">✏️ Manuellement</button>
         </div>
       </div>
       <div class="search-container">
-        <input type="text" id="librarySearchInput" class="search-input" data-i18n-placeholder="library_search_ph" placeholder="Search in library...">
-        <select id="librarySortSelect" class="input-neon" data-i18n-aria-label="library_sort_aria" aria-label="Sort library">
-          <option value="title_asc" data-i18n="sort_title_asc">Title (A → Z)</option>
-          <option value="title_desc" data-i18n="sort_title_desc">Title (Z → A)</option>
-          <option value="lastread_desc" data-i18n="sort_lastread_desc">Last read</option>
-          <option value="added_desc" data-i18n="sort_added_desc">Recently added</option>
+        <input type="text" id="librarySearchInput" class="search-input" placeholder="Rechercher dans la bibliothèque..." data-i18n-placeholder="library_search_placeholder">
+        <select id="librarySortSelect" class="input-neon" aria-label="Trier la bibliothèque">
+          <option value="title_asc" data-i18n="library_sort_title_asc">Titre (A → Z)</option>
+          <option value="title_desc" data-i18n="library_sort_title_desc">Titre (Z → A)</option>
+          <option value="lastread_desc" data-i18n="library_sort_lastread_desc">Dernière lecture</option>
+          <option value="added_desc" data-i18n="library_sort_added_desc">Ajout récent</option>
         </select>
-        <select id="libraryDomainSelect" class="input-neon" data-i18n-aria-label="library_filter_domain_aria" aria-label="Filter by site">
-          <option value="" data-i18n="library_all_sites">All sites</option>
+        <select id="libraryDomainSelect" class="input-neon" aria-label="Filtrer par site">
+          <option value="" data-i18n="library_all_sites">Tous les sites</option>
         </select>
       </div>
       <div class="filter-buttons">
-        <button class="filter-btn active" data-status="all" data-i18n="filter_all">All</button>
-        <button class="filter-btn" data-status="reading" data-i18n="filter_reading">Reading</button>
-        <button class="filter-btn" data-status="completed" data-i18n="filter_completed">Completed</button>
-        <button class="filter-btn" data-status="paused" data-i18n="filter_paused">Paused</button>
+        <button class="filter-btn active" data-status="all" data-i18n="library_filter_all">Tous</button>
+        <button class="filter-btn" data-status="reading" data-i18n="library_filter_reading">En cours</button>
+        <button class="filter-btn" data-status="completed" data-i18n="library_filter_completed">Terminés</button>
+        <button class="filter-btn" data-status="paused" data-i18n="library_filter_paused">En pause</button>
       </div>
       <div id="libraryList" class="manga-list">
-        <div class="empty-state"><p data-i18n="library_empty">Library is empty</p><small data-i18n="library_empty_hint">Add your favorite manga</small></div>
+        <div class="empty-state"><p data-i18n="library_empty_title">Bibliothèque vide</p><small data-i18n="library_empty_subtitle">Ajoutez vos mangas favoris</small></div>
       </div>
     </section>
 
     <!-- TAB: Découverte -->
     <section id="search" class="tab-content">
       <div class="search-container">
-        <input type="text" id="searchInput" class="search-input" data-i18n-placeholder="search_ph" placeholder="Search a manga...">
+        <input type="text" id="searchInput" class="search-input" placeholder="Rechercher un manga..." data-i18n-placeholder="search_placeholder">
         <button id="searchBtn" class="btn-neon">🔍</button>
       </div>
       <div id="searchLoading" class="loading-spinner" style="display:none;">
         <div class="spinner"></div>
-        <p data-i18n="search_loading">Searching...</p>
+        <p data-i18n="search_loading">Recherche...</p>
       </div>
       <div id="searchResults" class="search-results">
-        <div class="empty-state"><p data-i18n="search_empty">Type a title to search</p></div>
+        <div class="empty-state"><p data-i18n="search_empty_prompt">Entrez un titre pour rechercher</p></div>
       </div>
     </section>
 
     <!-- TAB: Historique -->
     <section id="history" class="tab-content">
       <div class="section-header">
-        <h2 class="panel-title" data-i18n="history_title">History</h2>
-        <button id="clearHistoryBtn" class="btn-danger" data-i18n="history_clear">Clear</button>
+        <h2 class="panel-title" data-i18n="history_title">Historique</h2>
+        <button id="clearHistoryBtn" class="btn-danger" data-i18n="history_clear">Effacer</button>
       </div>
       <div id="historyList" class="history-list">
-        <div class="empty-state"><p data-i18n="history_empty">No history</p></div>
+        <div class="empty-state"><p data-i18n="history_empty">Aucun historique</p></div>
       </div>
     </section>
 
@@ -125,7 +125,7 @@
     <section id="settings" class="tab-content">
       <div class="settings-block">
         <h2 class="panel-title" data-i18n="settings_activation_title">Activation</h2>
-        <p class="settings-lead" data-i18n="settings_activation_lead">Disable the extension everywhere or only on some sites (reload the page after changes).</p>
+        <p class="settings-lead" data-i18n="settings_activation_lead">Désactiver l’extension partout ou uniquement sur certains sites (rechargez la page après changement).</p>
         <div class="extension-control-bar" role="region" aria-label="Activation de l’extension">
           <div class="extension-control-row">
             <span class="extension-control-label" data-i18n="settings_extension_label">Extension</span>
@@ -133,52 +133,78 @@
               <input type="checkbox" id="globalExtensionEnabled" checked aria-describedby="globalExtensionHint">
               <span class="switch-neon-slider" aria-hidden="true"></span>
             </label>
-            <span class="extension-control-hint" id="globalExtensionHint" data-i18n="ext_active_everywhere">Enabled everywhere</span>
+            <span class="extension-control-hint" id="globalExtensionHint">Active partout</span>
           </div>
           <div class="extension-control-row extension-site-row">
-            <span class="extension-site-label" data-i18n="settings_current_tab">Current tab</span>
+            <span class="extension-site-label" data-i18n="settings_current_tab">Onglet actuel</span>
             <span class="extension-site-host" id="currentSiteHost">—</span>
-            <button type="button" id="toggleCurrentSiteBtn" class="btn-ghost btn-extension-site" data-i18n="ext_disable_site">Disable this site</button>
+            <button type="button" id="toggleCurrentSiteBtn" class="btn-ghost btn-extension-site">Désactiver ce site</button>
           </div>
           <div id="disabledHostsChips" class="disabled-hosts-chips" hidden></div>
         </div>
       </div>
       <div class="settings-block">
-        <h2 class="panel-title" data-i18n="settings_title">Settings</h2>
+        <h2 class="panel-title" data-i18n="settings_title">Paramètres</h2>
         <div class="form-row">
-          <label data-i18n="settings_display_lang">Display language</label>
-          <select id="displayLang" class="input-neon" data-i18n-aria-label="settings_display_lang" aria-label="Display language">
-            <option value="fr" data-i18n="lang_fr">French</option>
+          <label data-i18n="settings_display_lang">Langue d’affichage</label>
+          <select id="displayLang" class="input-neon" aria-label="Langue d’affichage">
+            <option value="fr">Français</option>
             <option value="en">English</option>
           </select>
         </div>
         <div class="form-row">
-          <label data-i18n="settings_scroll_speed">Auto-scroll speed</label>
+          <label data-i18n="settings_autoscroll_speed">Vitesse autoscroll</label>
           <div class="slider-row">
             <input type="range" id="defaultScrollSpeed" min="1" max="10" value="2" class="slider">
             <span id="speedValue">2</span>
           </div>
         </div>
         <div class="form-row">
-          <label data-i18n="settings_gemini_key">Gemini API key (translation)</label>
-          <input type="password" id="geminiApiKey" class="input-neon" data-i18n-placeholder="settings_api_key_ph" placeholder="API key...">
+          <label data-i18n="settings_gemini_key">Clé API Gemini (traduction)</label>
+          <input type="password" id="geminiApiKey" class="input-neon" placeholder="Clé API..." data-i18n-placeholder="settings_gemini_key_placeholder">
         </div>
         <div class="form-row">
-          <label data-i18n="settings_translation_lang">Translation language</label>
+          <label data-i18n="settings_translation_lang">Langue de traduction</label>
           <select id="translationLang" class="input-neon">
-            <option value="fr" data-i18n="lang_fr">French</option>
+            <option value="fr">Français</option>
             <option value="en">English</option>
             <option value="es">Español</option>
             <option value="de">Deutsch</option>
           </select>
         </div>
-        <button id="saveSettingsBtn" class="btn-neon full" data-i18n="settings_save">Save</button>
+        <div class="form-row form-row-notify">
+          <label class="notify-label-wrap">
+            <input type="checkbox" id="notifyNewChapters" class="input-neon-checkbox">
+            <span data-i18n="settings_notify_new_chapters">Alertes nouveaux chapitres</span>
+          </label>
+          <p class="settings-hint" data-i18n="settings_notify_new_chapters_hint">Navigateur : notification si un manga « En cours » a un chapitre plus récent sur MangaDex (comparé à ta progression).</p>
+        </div>
+        <div class="form-row">
+          <label for="notifyFrequencyMinutes" data-i18n="settings_notify_frequency">Vérifier toutes les</label>
+          <select id="notifyFrequencyMinutes" class="input-neon" aria-describedby="notifyFreqHint">
+            <option value="15">15 min</option>
+            <option value="30">30 min</option>
+            <option value="60">1 h</option>
+            <option value="180">3 h</option>
+            <option value="360">6 h</option>
+            <option value="720">12 h</option>
+            <option value="1440">24 h</option>
+          </select>
+          <small id="notifyFreqHint" class="settings-hint" data-i18n="settings_notify_frequency_hint">Minimum 15 minutes. Requiert une page ouverte ou le service worker (Chrome).</small>
+        </div>
+        <button id="saveSettingsBtn" class="btn-neon full" data-i18n="settings_save">Enregistrer</button>
+        <div class="backup-actions">
+          <button id="exportDataBtn" class="btn-ghost full" data-i18n="backup_export_btn">Exporter mes donnees</button>
+          <button id="importDataBtn" class="btn-ghost full" data-i18n="backup_import_btn">Importer une sauvegarde</button>
+          <input type="file" id="importDataInput" accept=".json,application/json" style="display:none;">
+        </div>
       </div>
       <div class="settings-block">
-        <h2 class="panel-title" data-i18n="custom_sites_title">Custom sites</h2>
-        <button id="addCustomSiteBtn" class="btn-neon" data-i18n="custom_sites_add">+ Add a site</button>
+        <h2 class="panel-title" data-i18n="settings_custom_sites">Sites personnalisés</h2>
+        <button id="addCustomSiteBtn" class="btn-neon" data-i18n="settings_add_custom_site">+ Ajouter un site</button>
+        <button id="testCurrentPageBtn" class="btn-ghost" style="margin-top:8px;" data-i18n="custom_sites_test_current_page">Tester la page actuelle</button>
         <div id="customSitesList" class="custom-sites-preview">
-          <div class="empty-state"><p data-i18n="custom_sites_empty">No custom sites</p><small data-i18n="custom_sites_empty_hint">Add your manga sites</small></div>
+          <div class="empty-state"><p>Aucun site personnalisé</p><small>Ajoutez vos sites de manga</small></div>
         </div>
       </div>
     </section>
@@ -188,23 +214,23 @@
   <nav class="bottom-nav">
     <button class="nav-tab active" data-tab="dashboard" title="Tableau de bord">
       <span class="nav-icon">⌂</span>
-      <span class="nav-label" data-i18n="nav_dashboard">Dashboard</span>
+      <span class="nav-label" data-i18n="nav_dashboard">Tableau de bord</span>
     </button>
     <button class="nav-tab" data-tab="library" title="Librairie">
       <span class="nav-icon">📚</span>
-      <span class="nav-label" data-i18n="nav_library">Library</span>
+      <span class="nav-label" data-i18n="nav_library">Librairie</span>
     </button>
     <button class="nav-tab" data-tab="search" title="Découverte">
       <span class="nav-icon">◇</span>
-      <span class="nav-label" data-i18n="nav_search">Discover</span>
+      <span class="nav-label" data-i18n="nav_discover">Découverte</span>
     </button>
     <button class="nav-tab" data-tab="history" title="Historique">
       <span class="nav-icon">🕐</span>
-      <span class="nav-label" data-i18n="nav_history">History</span>
+      <span class="nav-label" data-i18n="nav_history">Historique</span>
     </button>
     <button class="nav-tab" data-tab="settings" title="Paramètres">
       <span class="nav-icon">⚙</span>
-      <span class="nav-label" data-i18n="nav_settings">Settings</span>
+      <span class="nav-label" data-i18n="nav_settings">Paramètres</span>
     </button>
   </nav>
 
@@ -215,38 +241,38 @@
     <div class="modal-backdrop"></div>
     <div class="modal-content modal-neon">
       <div class="modal-header">
-        <h3 data-i18n="modal_add_title">Add a title</h3>
+        <h3>Ajouter un titre</h3>
         <button class="close-btn">&times;</button>
       </div>
       <div class="modal-body">
-        <div class="form-row"><label data-i18n="modal_title_label">Title</label><input type="text" id="modalTitle" class="input-neon" data-i18n-placeholder="modal_title_ph" placeholder="e.g. Solo Leveling" required></div>
-        <div class="form-row"><label data-i18n="modal_url_label">Chapter URL (optional)</label><input type="url" id="modalUrl" class="input-neon" placeholder="https://..."></div>
-        <div class="form-row"><label data-i18n="modal_status_label">Status</label>
+        <div class="form-row"><label>Titre</label><input type="text" id="modalTitle" class="input-neon" placeholder="Ex: Solo Leveling" required></div>
+        <div class="form-row"><label>URL du chapitre (optionnel)</label><input type="url" id="modalUrl" class="input-neon" placeholder="https://..."></div>
+        <div class="form-row"><label>Statut</label>
           <select id="modalStatus" class="input-neon">
-            <option value="reading" data-i18n="status_reading">Reading</option>
-            <option value="completed" data-i18n="status_completed">Completed</option>
-            <option value="paused" data-i18n="status_paused">Paused</option>
+            <option value="reading">En cours</option>
+            <option value="completed">Terminé</option>
+            <option value="paused">En pause</option>
           </select>
         </div>
         <div class="modal-advanced" id="modalAdvanced">
-          <button type="button" class="btn-toggle-advanced" id="toggleAdvancedBtn" data-i18n="modal_cover_toggle">+ Cover (optional)</button>
+          <button type="button" class="btn-toggle-advanced" id="toggleAdvancedBtn">+ Couverture (optionnel)</button>
           <div class="form-row advanced-row" id="modalCoverRow" style="display:none;">
-            <label data-i18n="modal_cover_url_label">Cover URL</label>
+            <label>URL de la couverture</label>
             <input type="url" id="modalCover" class="input-neon" placeholder="https://...">
             <div class="cover-upload-row">
-              <label class="cover-upload-label" for="modalCoverFile" data-i18n="modal_cover_upload_label">Or upload an image</label>
+              <label class="cover-upload-label" for="modalCoverFile">Ou importer une image</label>
               <input type="file" id="modalCoverFile" class="input-neon" accept="image/*">
               <div class="cover-upload-actions">
-                <button type="button" id="clearCoverBtn" class="btn-ghost" data-i18n="modal_cover_remove">Remove cover</button>
+                <button type="button" id="clearCoverBtn" class="btn-ghost">Retirer la couverture</button>
               </div>
-              <small class="cover-upload-hint" data-i18n="modal_cover_hint">The uploaded image is resized and stored locally.</small>
+              <small class="cover-upload-hint">L’image importée est redimensionnée et enregistrée localement.</small>
             </div>
           </div>
         </div>
       </div>
       <div class="modal-footer">
-        <button id="cancelModalBtn" class="btn-ghost" data-i18n="common_cancel">Cancel</button>
-        <button id="saveModalBtn" class="btn-neon" data-i18n="common_save">Save</button>
+        <button id="cancelModalBtn" class="btn-ghost">Annuler</button>
+        <button id="saveModalBtn" class="btn-neon">Enregistrer</button>
       </div>
     </div>
   </div>
@@ -256,23 +282,23 @@
     <div class="modal-backdrop"></div>
     <div class="modal-content modal-neon modal-wide">
       <div class="modal-header">
-        <h3 data-i18n="modal_site_title">Custom site</h3>
+        <h3>Site personnalisé</h3>
         <button class="close-btn" data-close="siteModal">&times;</button>
       </div>
       <div class="modal-body">
-        <div class="form-row"><label data-i18n="site_name">Name</label><input type="text" id="siteName" class="input-neon" data-i18n-placeholder="site_name_ph" placeholder="e.g. My Scan"></div>
-        <div class="form-row"><label data-i18n="site_domain">Domain</label><input type="text" id="siteDomain" class="input-neon" data-i18n-placeholder="site_domain_ph" placeholder="example.com"></div>
-        <div class="form-row"><label data-i18n="site_title_selector">Title selector (CSS)</label><input type="text" id="siteTitleSelector" class="input-neon" placeholder=".entry-title, h1"></div>
-        <div class="form-row"><label data-i18n="site_chapter_pattern">Chapter pattern (regex)</label><input type="text" id="siteChapterPattern" class="input-neon" placeholder="chapter[-_]?(\\d+)"></div>
-        <div class="form-row"><label data-i18n="site_container_selector">Images container</label><input type="text" id="siteContainerSelector" class="input-neon" placeholder="#readerarea"></div>
-        <div class="form-row"><label data-i18n="site_image_selector">Image selector</label><input type="text" id="siteImageSelector" class="input-neon" placeholder="img"></div>
-        <div class="form-row"><label data-i18n="site_cover_selector">Cover (optional)</label><input type="text" id="siteCoverSelector" class="input-neon" placeholder=".thumb img"></div>
-        <div class="form-row"><label data-i18n="site_next_btn">Next button</label><input type="text" id="siteNextSelector" class="input-neon" placeholder=".ch-next-btn"></div>
-        <div class="form-row"><label data-i18n="site_prev_btn">Previous button</label><input type="text" id="sitePrevSelector" class="input-neon" placeholder=".ch-prev-btn"></div>
+        <div class="form-row"><label>Nom</label><input type="text" id="siteName" class="input-neon" placeholder="ex: Mon Scan"></div>
+        <div class="form-row"><label>Domaine</label><input type="text" id="siteDomain" class="input-neon" placeholder="monsite.com"></div>
+        <div class="form-row"><label>Sélecteur titre (CSS)</label><input type="text" id="siteTitleSelector" class="input-neon" placeholder=".entry-title, h1"></div>
+        <div class="form-row"><label>Pattern chapitre (regex)</label><input type="text" id="siteChapterPattern" class="input-neon" placeholder="chapter[-_]?(\\d+)"></div>
+        <div class="form-row"><label>Conteneur images</label><input type="text" id="siteContainerSelector" class="input-neon" placeholder="#readerarea"></div>
+        <div class="form-row"><label>Sélecteur image</label><input type="text" id="siteImageSelector" class="input-neon" placeholder="img"></div>
+        <div class="form-row"><label>Couverture (optionnel)</label><input type="text" id="siteCoverSelector" class="input-neon" placeholder=".thumb img"></div>
+        <div class="form-row"><label>Bouton suivant</label><input type="text" id="siteNextSelector" class="input-neon" placeholder=".ch-next-btn"></div>
+        <div class="form-row"><label>Bouton précédent</label><input type="text" id="sitePrevSelector" class="input-neon" placeholder=".ch-prev-btn"></div>
       </div>
       <div class="modal-footer">
-        <button id="cancelSiteBtn" class="btn-ghost" data-i18n="common_cancel">Cancel</button>
-        <button id="saveSiteBtn" class="btn-neon" data-i18n="common_save">Save</button>
+        <button id="cancelSiteBtn" class="btn-ghost">Annuler</button>
+        <button id="saveSiteBtn" class="btn-neon">Enregistrer</button>
       </div>
     </div>
   </div>

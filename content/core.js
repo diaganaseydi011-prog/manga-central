@@ -102,6 +102,14 @@ function startUrlWatch(ui) {
   const autoScroller = new AutoScroller();
   const ui = new UIManager(parser, autoScroller);
   if (ui && typeof ui.setLang === 'function') ui.setLang(settings.displayLang || 'fr');
+  chrome.storage.onChanged.addListener((changes, area) => {
+    if (area !== 'local' || !changes.settings) return;
+    const prev = changes.settings.oldValue && typeof changes.settings.oldValue === 'object' ? changes.settings.oldValue : {};
+    const next = changes.settings.newValue && typeof changes.settings.newValue === 'object' ? changes.settings.newValue : {};
+    if ((prev.displayLang || 'fr') === (next.displayLang || 'fr')) return;
+    if (ui && typeof ui.setLang === 'function') ui.setLang(next.displayLang || 'fr');
+    if (ui && typeof ui.applyLang === 'function') ui.applyLang();
+  });
 
   try {
     const result = await detectAndApply(ui);
@@ -115,6 +123,17 @@ function startUrlWatch(ui) {
   }
 
   chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
+    if (msg.type === 'GET_ALL_HREFS') {
+      try {
+        const hrefs = Array.from(document.querySelectorAll('a[href]'))
+          .map((a) => a.getAttribute('href') || '')
+          .filter(Boolean);
+        sendResponse({ hrefs });
+      } catch (_) {
+        sendResponse({ hrefs: [] });
+      }
+      return false;
+    }
     if (msg.type !== 'GET_META') return false;
     (async () => {
       try {

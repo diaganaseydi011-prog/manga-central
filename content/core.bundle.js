@@ -557,6 +557,60 @@
       const l = String(lang || "").toLowerCase();
       this.lang = l === "en" ? "en" : "fr";
     }
+    applyLang() {
+      var _a, _b;
+      if (!this.shadowRoot) return;
+      const cropHint = this.shadowRoot.querySelector(".mc-crop-hint");
+      if (cropHint) cropHint.textContent = this.t("crop_hint");
+      const dockHandle = this.shadowRoot.getElementById("mc-dock-handle");
+      if (dockHandle) dockHandle.setAttribute("title", this.t("dock_handle"));
+      const btnTop = this.shadowRoot.getElementById("btn-top");
+      if (btnTop) {
+        btnTop.setAttribute("title", this.t("top_title"));
+        const icon = ((_a = btnTop.querySelector(".mc-btn-icon")) == null ? void 0 : _a.outerHTML) || "";
+        btnTop.innerHTML = `${icon}${this.t("top")}`;
+      }
+      const btnBottom = this.shadowRoot.getElementById("btn-bottom");
+      if (btnBottom) {
+        btnBottom.setAttribute("title", this.t("bottom_title"));
+        const icon = ((_b = btnBottom.querySelector(".mc-btn-icon")) == null ? void 0 : _b.outerHTML) || "";
+        btnBottom.innerHTML = `${icon}${this.t("bottom")}`;
+      }
+      const btnScroll = this.shadowRoot.getElementById("btn-scroll");
+      if (btnScroll) btnScroll.setAttribute("title", this.t("scroll_title"));
+      const btnOcr = this.shadowRoot.getElementById("btn-ocr");
+      if (btnOcr) btnOcr.setAttribute("title", this.t("ocr_title"));
+      const btnPrevChapter = this.shadowRoot.getElementById("btn-prev-chapter");
+      if (btnPrevChapter) {
+        btnPrevChapter.textContent = this.t("prev_chapter");
+        btnPrevChapter.setAttribute("title", this.t("prev_chapter_title"));
+      }
+      const btnNextChapter = this.shadowRoot.getElementById("btn-next-chapter");
+      if (btnNextChapter) {
+        btnNextChapter.textContent = this.t("next_chapter");
+        btnNextChapter.setAttribute("title", this.t("next_chapter_title"));
+      }
+      const chapterInput = this.shadowRoot.getElementById("input-chapter-target");
+      if (chapterInput) chapterInput.setAttribute("placeholder", this.t("chapter_input_placeholder"));
+      const btnGoChapter = this.shadowRoot.getElementById("btn-go-chapter");
+      if (btnGoChapter) {
+        btnGoChapter.textContent = this.t("go_chapter");
+        btnGoChapter.setAttribute("title", this.t("go_chapter_title"));
+      }
+      const chapterNavTitle = this.shadowRoot.querySelector(".mc-chapter-nav-title");
+      if (chapterNavTitle) chapterNavTitle.textContent = this.t("chapter_nav_title");
+      const btnToggleChapterNav = this.shadowRoot.getElementById("btn-toggle-chapter-nav");
+      if (btnToggleChapterNav) {
+        btnToggleChapterNav.textContent = this.t("chapter_toggle");
+        btnToggleChapterNav.setAttribute("title", this.t("chapter_toggle_title"));
+      }
+      const uiLabel = this.shadowRoot.querySelector("#ui-tweaks .mc-ui-label");
+      if (uiLabel) uiLabel.textContent = this.t("btn_size");
+      const rangeBtnScale = this.shadowRoot.getElementById("range-btnscale");
+      if (rangeBtnScale) rangeBtnScale.setAttribute("title", this.t("btn_size_title"));
+      const transTitle = this.shadowRoot.querySelector("#translation-popup .mc-translation-header span");
+      if (transTitle) transTitle.textContent = this.t("translation");
+    }
     t(key, vars = {}) {
       const dict = {
         fr: {
@@ -568,20 +622,21 @@
           bottom_title: "Bas de page",
           scroll_title: "Auto-Scroll",
           ocr_title: "Scanner & Traduire",
+          chapter_nav_title: "Navigation chapitre",
+          prev_chapter: "Chap -",
+          next_chapter: "Chap +",
+          prev_chapter_title: "Aller au chapitre précédent",
+          next_chapter_title: "Aller au chapitre suivant",
+          chapter_input_placeholder: "Chapitre…",
+          go_chapter: "Aller",
+          go_chapter_title: "Aller au chapitre saisi",
+          chapter_invalid: "Numéro de chapitre invalide.",
+          chapter_not_found: "Ce chapitre n'existe pas sur ce site.",
+          chapter_toggle: "Chap",
+          chapter_toggle_title: "Afficher/masquer navigation chapitre",
           btn_size: "Taille boutons",
           btn_size_title: "Taille des boutons",
-          translation: "Traduction",
-          resize_width: "Largeur",
-          resize_height: "Hauteur",
-          resize_corner: "Redimensionner (proportionnel)",
-          ocr_capture: "🔍 Capture en cours…",
-          ocr_crop: "✂️ Recadrage…",
-          ocr_translate: "🤖 Traduction…",
-          ext_reloaded_retry: "L'extension a été rechargée. Rechargez la page du manga (F5) puis réessayez.",
-          capture_failed: "Impossible de capturer l'écran",
-          no_translation_response: "Aucune réponse du service de traduction.",
-          ext_updated_retry: "L'extension a été rechargée ou mise à jour.\n\nRechargez la page du manga (F5) puis réessayez la traduction.",
-          error_prefix: "Erreur : {msg}"
+          translation: "Traduction"
         },
         en: {
           crop_hint: "Select an area to translate (Esc to cancel)",
@@ -592,20 +647,21 @@
           bottom_title: "Bottom of page",
           scroll_title: "Auto-scroll",
           ocr_title: "Scan & translate",
+          chapter_nav_title: "Chapter navigation",
+          prev_chapter: "Chap -",
+          next_chapter: "Chap +",
+          prev_chapter_title: "Go to previous chapter",
+          next_chapter_title: "Go to next chapter",
+          chapter_input_placeholder: "Chapter...",
+          go_chapter: "Go",
+          go_chapter_title: "Go to entered chapter",
+          chapter_invalid: "Invalid chapter number.",
+          chapter_not_found: "This chapter does not exist on this site.",
+          chapter_toggle: "Chap",
+          chapter_toggle_title: "Show/hide chapter navigation",
           btn_size: "Button size",
           btn_size_title: "Button size",
-          translation: "Translation",
-          resize_width: "Width",
-          resize_height: "Height",
-          resize_corner: "Resize (proportional)",
-          ocr_capture: "🔍 Capturing…",
-          ocr_crop: "✂️ Cropping…",
-          ocr_translate: "🤖 Translating…",
-          ext_reloaded_retry: "The extension was reloaded. Reload the manga page (F5) and try again.",
-          capture_failed: "Could not capture the screen",
-          no_translation_response: "No response from the translation service.",
-          ext_updated_retry: "The extension was reloaded or updated.\n\nReload the manga page (F5) and try translating again.",
-          error_prefix: "Error: {msg}"
+          translation: "Translation"
         }
       };
       const table = dict[this.lang] || dict.fr;
@@ -614,6 +670,7 @@
       return out;
     }
     init(meta) {
+      this.currentMeta = meta || null;
       const host = document.createElement("div");
       host.id = "manga-central-overlay-host";
       host.style.position = "fixed";
@@ -644,15 +701,27 @@
               <span class="mc-chapter">Ch. ${meta.chapter}</span>
             </div>
           </div>
-          <div id="mc-resize-right" class="mc-resize-right" title="${this.t("resize_width")}"></div>
-          <div id="mc-resize-bottom" class="mc-resize-bottom" title="${this.t("resize_height")}"></div>
-          <div id="mc-resize-corner" class="mc-resize-corner" title="${this.t("resize_corner")}"></div>
+          <div id="mc-resize-right" class="mc-resize-right" title="Largeur"></div>
+          <div id="mc-resize-bottom" class="mc-resize-bottom" title="Hauteur"></div>
+          <div id="mc-resize-corner" class="mc-resize-corner" title="Redimensionner (proportionnel)"></div>
           <div class="mc-controls-wrap">
             <div class="mc-controls">
               <button type="button" id="btn-top" class="mc-btn" title="${this.t("top_title")}"><span class="mc-btn-icon">⬆</span>${this.t("top")}</button>
               <button type="button" id="btn-scroll" class="mc-btn" title="${this.t("scroll_title")}"><span class="mc-btn-icon">📜</span>Scroll</button>
               <button type="button" id="btn-ocr" class="mc-btn" title="${this.t("ocr_title")}"><span class="mc-btn-icon">🔍</span>OCR</button>
+              <button type="button" id="btn-toggle-chapter-nav" class="mc-btn" title="${this.t("chapter_toggle_title")}"><span class="mc-btn-icon">📘</span>${this.t("chapter_toggle")}</button>
               <button type="button" id="btn-bottom" class="mc-btn" title="${this.t("bottom_title")}"><span class="mc-btn-icon">⬇</span>${this.t("bottom")}</button>
+            </div>
+          </div>
+          <div class="mc-chapter-nav" id="mc-chapter-nav" hidden>
+            <div class="mc-chapter-nav-title">${this.t("chapter_nav_title")}</div>
+            <div class="mc-chapter-nav-grid">
+              <button type="button" id="btn-prev-chapter" class="mc-chip-btn" title="${this.t("prev_chapter_title")}">${this.t("prev_chapter")}</button>
+              <button type="button" id="btn-next-chapter" class="mc-chip-btn" title="${this.t("next_chapter_title")}">${this.t("next_chapter")}</button>
+            </div>
+            <div class="mc-chapter-jump-row">
+              <input type="number" step="any" min="0" id="input-chapter-target" class="mc-chapter-input" placeholder="${this.t("chapter_input_placeholder")}">
+              <button type="button" id="btn-go-chapter" class="mc-chip-btn mc-chip-btn-primary" title="${this.t("go_chapter_title")}">${this.t("go_chapter")}</button>
             </div>
           </div>
           <div class="mc-speed-control" id="speed-control" style="display:none;">
@@ -676,6 +745,7 @@
       this._setupDraggablePanel();
       this._setupResizablePanel();
       this._setupUiTweaks();
+      this.applyLang();
     }
     /**
      * Met à jour l’affichage (titre / chapitre) et optionnellement le parser (pour DL, etc.)
@@ -683,6 +753,7 @@
      */
     updateMeta(meta, parser = null) {
       if (parser) this.parser = parser;
+      this.currentMeta = meta || this.currentMeta;
       if (!this.shadowRoot) return;
       const titleEl = this.shadowRoot.querySelector(".mc-title");
       const chapterEl = this.shadowRoot.querySelector(".mc-chapter");
@@ -715,6 +786,81 @@
       });
       rangeSpeed.addEventListener("input", (e) => {
         this.autoScroller.setSpeed(parseInt(e.target.value));
+      });
+      const btnPrevChapter = this.shadowRoot.getElementById("btn-prev-chapter");
+      const btnNextChapter = this.shadowRoot.getElementById("btn-next-chapter");
+      const btnGoChapter = this.shadowRoot.getElementById("btn-go-chapter");
+      const chapterInput = this.shadowRoot.getElementById("input-chapter-target");
+      const chapterNav = this.shadowRoot.getElementById("mc-chapter-nav");
+      const btnToggleChapterNav = this.shadowRoot.getElementById("btn-toggle-chapter-nav");
+      const panel = this.shadowRoot.querySelector(".mc-floating-panel");
+      if (chapterInput) {
+        const currentChapter = this._getCurrentChapterNumber();
+        if (Number.isFinite(currentChapter)) chapterInput.value = String(currentChapter);
+      }
+      const applyChapterNavVisibility = (visible) => {
+        if (!chapterNav || !btnToggleChapterNav) return;
+        chapterNav.hidden = !visible;
+        btnToggleChapterNav.classList.toggle("active", !!visible);
+        if (panel) panel.style.height = "";
+      };
+      (async () => {
+        try {
+          const { overlayChapterNavVisible } = await chrome.storage.local.get("overlayChapterNavVisible");
+          applyChapterNavVisibility(overlayChapterNavVisible === true);
+        } catch (_) {
+          applyChapterNavVisibility(false);
+        }
+      })();
+      btnToggleChapterNav == null ? void 0 : btnToggleChapterNav.addEventListener("click", async (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        const nextVisible = !!(chapterNav == null ? void 0 : chapterNav.hidden);
+        applyChapterNavVisibility(nextVisible);
+        try {
+          await chrome.storage.local.set({ overlayChapterNavVisible: nextVisible });
+        } catch (_) {
+        }
+      });
+      btnPrevChapter == null ? void 0 : btnPrevChapter.addEventListener("click", async (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        await this._navigateChapterByOffset(-1);
+      });
+      btnNextChapter == null ? void 0 : btnNextChapter.addEventListener("click", async (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        await this._navigateChapterByOffset(1);
+      });
+      const goToTypedChapter = async () => {
+        const raw = String((chapterInput == null ? void 0 : chapterInput.value) || "").trim().replace(",", ".");
+        const targetChapter = Number(raw);
+        if (!Number.isFinite(targetChapter) || targetChapter < 0) {
+          this.showTranslation(this.t("chapter_invalid"));
+          return;
+        }
+        const targetUrl = this._buildChapterUrl(targetChapter);
+        if (!targetUrl) {
+          this.showTranslation(this.t("chapter_not_found"));
+          return;
+        }
+        const exists = await this._canNavigateToChapter(targetUrl);
+        if (!exists) {
+          this.showTranslation(this.t("chapter_not_found"));
+          return;
+        }
+        window.location.href = targetUrl;
+      };
+      btnGoChapter == null ? void 0 : btnGoChapter.addEventListener("click", async (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        await goToTypedChapter();
+      });
+      chapterInput == null ? void 0 : chapterInput.addEventListener("keydown", async (e) => {
+        if (e.key !== "Enter") return;
+        e.preventDefault();
+        e.stopPropagation();
+        await goToTypedChapter();
       });
       this.shadowRoot.getElementById("btn-ocr").addEventListener("click", (e) => {
         e.preventDefault();
@@ -1366,18 +1512,18 @@
       const rect = selection.getBoundingClientRect();
       this.stopCropMode();
       if (rect.width < 10 || rect.height < 10) return;
-      this.showTranslation(this.t("ocr_capture"), true);
+      this.showTranslation("🔍 Capture en cours…", true);
       try {
         if (!((_a = chrome == null ? void 0 : chrome.runtime) == null ? void 0 : _a.id)) {
-          this.showTranslation(this.t("ext_reloaded_retry"));
+          this.showTranslation("L'extension a été rechargée. Rechargez la page du manga (F5) puis réessayez.");
           return;
         }
         const response = await chrome.runtime.sendMessage({ type: "CAPTURE_TAB" });
         if (!response || !response.dataUrl) {
-          const errMsg = response && response.error ? response.error : this.t("capture_failed");
+          const errMsg = response && response.error ? response.error : "Impossible de capturer l'écran";
           throw new Error(errMsg);
         }
-        this.showTranslation(this.t("ocr_crop"), true);
+        this.showTranslation("✂️ Recadrage…", true);
         const croppedDataUrl = await this._cropImage(response.dataUrl, rect);
         const cacheKey = croppedDataUrl.slice(-120);
         if (!this._ocrCache) this._ocrCache = /* @__PURE__ */ new Map();
@@ -1386,15 +1532,15 @@
           return;
         }
         if (!((_b = chrome == null ? void 0 : chrome.runtime) == null ? void 0 : _b.id)) {
-          this.showTranslation(this.t("ext_reloaded_retry"));
+          this.showTranslation("L'extension a été rechargée. Rechargez la page du manga (F5) puis réessayez.");
           return;
         }
-        this.showTranslation(this.t("ocr_translate"), true);
+        this.showTranslation("🤖 Traduction…", true);
         const translationResponse = await chrome.runtime.sendMessage({
           type: "TRANSLATE_TEXT",
           payload: { image: croppedDataUrl }
         });
-        const text = translationResponse && translationResponse.translation ? translationResponse.translation : this.t("no_translation_response");
+        const text = translationResponse && translationResponse.translation ? translationResponse.translation : "Aucune réponse du service de traduction.";
         this.showTranslation(text);
         if (this._ocrCache.size >= 30) {
           this._ocrCache.delete(this._ocrCache.keys().next().value);
@@ -1404,9 +1550,9 @@
         console.error(err);
         const msg = err && err.message ? err.message : String(err);
         if (msg.includes("Extension context invalidated") || msg.includes("context invalidated")) {
-          this.showTranslation(this.t("ext_updated_retry"));
+          this.showTranslation("L'extension a été rechargée ou mise à jour.\n\nRechargez la page du manga (F5) puis réessayez la traduction.");
         } else {
-          this.showTranslation(this.t("error_prefix", { msg }));
+          this.showTranslation("Erreur : " + msg);
         }
       }
     }
@@ -1488,6 +1634,88 @@
       popup.style.display = "block";
       content.innerText = text;
       content.style.opacity = isLoading ? 0.5 : 1;
+    }
+    _getCurrentChapterNumber() {
+      var _a;
+      const byMeta = Number(((_a = this.currentMeta) == null ? void 0 : _a.chapter) ?? NaN);
+      if (Number.isFinite(byMeta)) return byMeta;
+      const fromTitle = document.title.match(/(?:chapter|chapitre|ch\.?|chap)\s*[-: ]?\s*(\d+(?:\.\d+)?)/i);
+      if (fromTitle && fromTitle[1]) {
+        const n = Number(fromTitle[1]);
+        if (Number.isFinite(n)) return n;
+      }
+      const fromUrl = window.location.href.match(/(?:chapter|chapitre|chap)[-_\/]?(\d+(?:\.\d+)?)/i) || window.location.href.match(/[?&](?:chapter|chapitre|chap|ch)=(\d+(?:\.\d+)?)/i) || window.location.href.match(/\/(\d+(?:\.\d+)?)\/?$/);
+      if (fromUrl && fromUrl[1]) {
+        const n = Number(fromUrl[1]);
+        if (Number.isFinite(n)) return n;
+      }
+      return NaN;
+    }
+    _formatChapterLikeCurrent(value) {
+      const str = String(value);
+      return str.endsWith(".0") ? str.slice(0, -2) : str;
+    }
+    _buildChapterUrl(targetChapter) {
+      const currentUrl = window.location.href;
+      const target = this._formatChapterLikeCurrent(targetChapter);
+      const replacements = [
+        /(chapter|chapitre|chap)([-_\/]?)(\d+(?:\.\d+)?)/i,
+        /([?&](?:chapter|chapitre|chap|ch)=)(\d+(?:\.\d+)?)/i,
+        /(\/)(\d+(?:\.\d+)?)(\/?$)/i
+      ];
+      for (const re of replacements) {
+        if (!re.test(currentUrl)) continue;
+        if (re.source.startsWith("(chapter")) {
+          return currentUrl.replace(re, `$1$2${target}`);
+        }
+        if (re.source.startsWith("([?&]")) {
+          return currentUrl.replace(re, `$1${target}`);
+        }
+        return currentUrl.replace(re, `$1${target}$3`);
+      }
+      return null;
+    }
+    async _canNavigateToChapter(targetUrl) {
+      try {
+        const headResp = await fetch(targetUrl, { method: "HEAD", credentials: "include", cache: "no-store" });
+        if (headResp.ok) return true;
+        if (headResp.status === 404) return false;
+      } catch (_) {
+      }
+      try {
+        const getResp = await fetch(targetUrl, { method: "GET", credentials: "include", cache: "no-store" });
+        if (!getResp.ok) return false;
+        const text = await getResp.text();
+        if (/404|not found|page introuvable|doesn't exist|does not exist/i.test(text)) return false;
+        return true;
+      } catch (_) {
+        return false;
+      }
+    }
+    async _navigateChapterByOffset(offset) {
+      var _a, _b, _c, _d;
+      const parserUrl = offset > 0 ? (_b = (_a = this.parser) == null ? void 0 : _a.getNextChapterUrl) == null ? void 0 : _b.call(_a) : (_d = (_c = this.parser) == null ? void 0 : _c.getPrevChapterUrl) == null ? void 0 : _d.call(_c);
+      if (parserUrl) {
+        window.location.href = parserUrl;
+        return;
+      }
+      const current = this._getCurrentChapterNumber();
+      if (!Number.isFinite(current)) {
+        this.showTranslation(this.t("chapter_not_found"));
+        return;
+      }
+      const target = Math.max(0, current + offset);
+      const targetUrl = this._buildChapterUrl(target);
+      if (!targetUrl) {
+        this.showTranslation(this.t("chapter_not_found"));
+        return;
+      }
+      const exists = await this._canNavigateToChapter(targetUrl);
+      if (!exists) {
+        this.showTranslation(this.t("chapter_not_found"));
+        return;
+      }
+      window.location.href = targetUrl;
     }
   }
   let lastUrl = "";
@@ -1575,6 +1803,14 @@
     const autoScroller = new AutoScroller();
     const ui = new UIManager(parser, autoScroller);
     if (ui && typeof ui.setLang === "function") ui.setLang(settings.displayLang || "fr");
+    chrome.storage.onChanged.addListener((changes, area) => {
+      if (area !== "local" || !changes.settings) return;
+      const prev = changes.settings.oldValue && typeof changes.settings.oldValue === "object" ? changes.settings.oldValue : {};
+      const next = changes.settings.newValue && typeof changes.settings.newValue === "object" ? changes.settings.newValue : {};
+      if ((prev.displayLang || "fr") === (next.displayLang || "fr")) return;
+      if (ui && typeof ui.setLang === "function") ui.setLang(next.displayLang || "fr");
+      if (ui && typeof ui.applyLang === "function") ui.applyLang();
+    });
     try {
       const result = await detectAndApply(ui);
       if (result) {
@@ -1585,6 +1821,15 @@
     } catch (err) {
     }
     chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
+      if (msg.type === "GET_ALL_HREFS") {
+        try {
+          const hrefs = Array.from(document.querySelectorAll("a[href]")).map((a) => a.getAttribute("href") || "").filter(Boolean);
+          sendResponse({ hrefs });
+        } catch (_) {
+          sendResponse({ hrefs: [] });
+        }
+        return false;
+      }
       if (msg.type !== "GET_META") return false;
       (async () => {
         try {

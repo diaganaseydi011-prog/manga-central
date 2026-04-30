@@ -30,6 +30,11 @@ function getWorkKeyFromUrl(url) {
     const u = new URL(url.trim());
     const host = u.hostname.replace(/^www\./, '').toLowerCase();
     const parts = u.pathname.split('/').filter(Boolean);
+    // AsuraScans: https://asurascans.com/comics/<slug>/chapter/<n>
+    if (host === 'asurascans.com' && parts[0] === 'comics' && parts[1]) {
+      const slug = parts[1].toString().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+      if (slug) return `asura:comics:${slug}`;
+    }
     // MangaMoins: pages du type https://mangamoins.com/scan/<slug>
     if (host === 'mangamoins.com' && parts[0] === 'scan' && parts[1]) {
       const raw = parts[1].toString();
@@ -38,7 +43,25 @@ function getWorkKeyFromUrl(url) {
       const slug = raw.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
       return `mangamoins:scan:${slug}`;
     }
-    return '';
+
+    // Fallback générique: clé URL "canonique" pour éviter les collisions basées sur le titre.
+    // Objectif: /manga/slug/chapter/178 -> /manga/slug/
+    const chapterWords = new Set(['chapter', 'chapitre', 'chap', 'read', 'episode', 'viewer', 'lecture', 'view']);
+    const canonParts = parts.slice();
+    for (let i = 0; i < 3 && canonParts.length; i++) {
+      const seg = canonParts[canonParts.length - 1];
+      const segLc = String(seg || '').toLowerCase();
+      if (/[0-9]/.test(seg) || chapterWords.has(segLc)) {
+        canonParts.pop();
+        continue;
+      }
+      break;
+    }
+    if (!canonParts.length) return '';
+    u.pathname = '/' + canonParts.join('/') + '/';
+    u.search = '';
+    u.hash = '';
+    return `url:${u.origin}${u.pathname}`;
   } catch {
     return '';
   }
@@ -82,23 +105,642 @@ function idFromTitleAndChapter(title, chapter) {
   return result;
 }
 
+// --- Notifications nouveau chapitre (baseline + MangaDex) ---
+const NOTIFY_ALARM = 'mc_notify_new_chapters';
+
+function clampNotifyPeriodMinutes(raw) {
+  const n = parseInt(raw, 10);
+  if (!Number.isFinite(n)) return 360;
+  if (n < 15) return 15;
+  if (n > 7 * 24 * 60) return 7 * 24 * 60;
+  return n;
+}
+
+function sleep(ms) {
+  return new Promise((r) => setTimeout(r, ms));
+}
+
+function extractChapterNumberFromUrlLikeGeneric(href) {
+  if (!href) return null;
+  const url = String(href).replace(/#.*$/, '');
+  const path = url.replace(/^[^?]+\?/, '');
+  const pathOnly = url.split('?')[0];
+
+  const pathPatterns = [
+    /[?&](?:chapter|chapitre|chap)=(\d+(?:\.\d+)?)/i,
+    /[?&]ch=(\d+(?:\.\d+)?)/i,
+    /[?&]c=(\d+)/i,
+    /(?:chapter|chapitre|chap)[-_\/]?(\d+(?:\.\d+)?)/i,
+    /(?:chapter|chapitre)s?\/(\d+)/i,
+    /\/ch[-_]?(\d+)(?:\/|$)/i,
+    /\/c(\d+)(?:\/|$)/i,
+    /chap[-_](\d+)/i,
+    /vol-\d+\/chap[-_]?(\d+)/i,
+    /chapter-(\d+)\.html/i,
+    /chapter-(\d+)(?:-|\.|$)/i,
+    /chapters\/(\d+)/i,
+    /episode[-_]?(\d+)/i,
+    /episode\/(\d+)/i,
+    /viewer\/(\d+)/i,
+    /\/view\/(\d+)(?:\/|$)/i,
+    /\/read\/[^/]+\/[^/]+\/\d+\/(\d+)\/?/i,
+    /(?:manga|manhwa|comics?|scan-vf)\/[^/]+\/[^/]+\/(\d+)\/?/i,
+    /(?:library|directory|archives|online)\/[^/]+\/[^/]+\/[^/]+\/(\d+)(?:\/|\.)/i,
+    /manga-list\/[^/]+\/[^/]+\/chapter-(\d+)\.html/i,
+    /(?:comic|title)\/\d+\/view\/(\d+)/i,
+    /\/title\/\d+\/chapter\/(\d+)/i,
+    /\/scan\/[^/]*?(\d+)(?:\/|$)/i,
+    /(?:\/lecture|\/view|\/read)\/[^/]*?(\d+)(?:\/|$)/i,
+    /(?:^|\/)(\d+)\/?$/,
+  ];
+
+  for (const re of pathPatterns) {
+    const m = pathOnly.match(re) || path.match(re);
+    if (m && m[1]) return m[1];
+  }
+  return null;
+}
+
+function guessWorkPageUrlFromChapterUrl(url) {
+  if (!url) return '';
+  const s = String(url).trim();
+  if (!s) return '';
+  try {
+    const u = new URL(s);
+    const parts = u.pathname.split('/').filter(Boolean);
+    if (!parts.length) return u.origin + '/';
+    const last = parts[parts.length - 1];
+    const prev = parts.length >= 2 ? parts[parts.length - 2] : '';
+
+    if (prev === 'chapter' && last && /^[a-f0-9-]{20,}$/i.test(last)) return '';
+
+    const chapterWords = new Set(['chapter', 'chapitre', 'chap', 'read', 'episode', 'viewer', 'lecture', 'view']);
+
+    // Retire 1-2 segments finaux "chapter-like" pour remonter vers la page oeuvre.
+    // Ex: /comics/slug/chapter/178 => /comics/slug/
+    for (let i = 0; i < 2 && parts.length; i++) {
+      const seg = parts[parts.length - 1];
+      const segLc = String(seg || '').toLowerCase();
+      if (/[0-9]/.test(seg) || chapterWords.has(segLc)) {
+        parts.pop();
+        continue;
+      }
+      break;
+    }
+
+    u.pathname = '/' + parts.join('/') + (parts.length ? '/' : '');
+    u.search = '';
+    u.hash = '';
+    return u.toString();
+
+  } catch {
+    return '';
+  }
+}
+
+async function getChapterHrefsFromActiveTab() {
+  return await new Promise((resolve) => {
+    chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+      const tabId = tabs && tabs[0] ? tabs[0].id : null;
+      if (!tabId) return resolve([]);
+      chrome.tabs.sendMessage(tabId, { type: 'GET_ALL_HREFS' }, (res) => {
+        if (chrome.runtime.lastError) return resolve([]);
+        const hrefs = res && Array.isArray(res.hrefs) ? res.hrefs : [];
+        resolve(hrefs);
+      });
+    });
+  });
+}
+
+function extractLatestFromHrefs(hrefs, baseUrl) {
+  const base = baseUrl;
+  const numbers = [];
+  const chapterLikePath = /(chapter|chapitre|chap|scan|read|episode|viewer|lecture|view)/i;
+
+  for (const rawHref of hrefs) {
+    const href = String(rawHref || '').trim();
+    if (!href || href.startsWith('javascript:') || href.startsWith('#')) continue;
+    let abs;
+    try {
+      abs = new URL(href, base).toString();
+    } catch {
+      continue;
+    }
+
+    let pathname = '';
+    try {
+      pathname = new URL(abs).pathname || '';
+    } catch {
+      pathname = '';
+    }
+    if (!chapterLikePath.test(pathname)) continue;
+
+    const chStr = extractChapterNumberFromUrlLikeGeneric(abs);
+    if (!chStr) continue;
+    const n = parseFloat(String(chStr).replace(',', '.'));
+    if (!Number.isFinite(n)) continue;
+    if (n <= 0 || n > 200000) continue;
+    numbers.push(n);
+  }
+
+  if (!numbers.length) return null;
+  const latest = Math.max(...numbers);
+  return Number.isFinite(latest) ? latest : null;
+}
+
+async function fetchAndExtractLatestFromWorkUrl(workUrl) {
+  let html = '';
+  try {
+    const res = await fetch(workUrl, { redirect: 'follow' });
+    if (!res.ok) return null;
+    const ct = res.headers.get('content-type') || '';
+    if (!ct.toLowerCase().includes('text/html')) return null;
+    html = await res.text();
+  } catch {
+    return null;
+  }
+
+  const hrefs = [];
+  const hrefRe = /\shref\s*=\s*(?:"([^"]+)"|'([^']+)'|([^\s>]+))/gi;
+  let m;
+  while ((m = hrefRe.exec(html))) {
+    const href = (m[1] || m[2] || m[3] || '').trim();
+    if (!href) continue;
+    hrefs.push(href);
+  }
+  return extractLatestFromHrefs(hrefs, workUrl);
+}
+
+async function scrapeLatestChapterFromSourceSite(chapterUrl) {
+  let urlToTry = String(chapterUrl || '').trim();
+  if (!urlToTry) return null;
+
+  for (let attempt = 0; attempt < 3; attempt++) {
+    const workUrl = guessWorkPageUrlFromChapterUrl(urlToTry);
+    if (!workUrl || workUrl === urlToTry) break;
+
+    const latest = await fetchAndExtractLatestFromWorkUrl(workUrl);
+    if (latest != null) return latest;
+
+    try {
+      const activeHrefs = await getChapterHrefsFromActiveTab();
+      if (activeHrefs && activeHrefs.length) {
+        const a = new URL(workUrl);
+        const t = new URL(urlToTry);
+        if (a.origin === t.origin) {
+          const latestFromDom = extractLatestFromHrefs(activeHrefs, workUrl);
+          if (latestFromDom != null) return latestFromDom;
+        }
+      }
+    } catch {
+      // ignore
+    }
+
+    urlToTry = workUrl;
+  }
+  return null;
+}
+
+function cleanTitleForMangaSearch(title) {
+  return String(title || '')
+    .trim()
+    .replace(/\s*[\[\(].*?[\]\)]\s*/g, ' ')
+    .replace(/\s*[-|–—]\s*(?:chapter|chapitre|chap|ch\.?)\s*\d+.*$/i, '')
+    .replace(/\s*[|–—-]\s*(?:scan|scans|manga|manhwa|webtoon)\b.*$/i, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function normTitleForMatch(title) {
+  return String(title || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, ' ')
+    .trim();
+}
+
+// Normalisation "popup-like" pour que les clés utilisées par le popup
+// (title:${...} / mangamoins:scan:${...}) matchent celles du cache background.
+function normalizeTitleKeyPopupLike(title) {
+  const out = String(title || '')
+    .toString()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/\s*[-|–—]\s*(?:mangamoins(?:\.[a-z]{2,})?|manga\s*moins)\s*$/i, '')
+    .replace(/\s*[|–—-]\s*(?:scan|scans|manga|manhwa|webtoon)\b.*$/i, '')
+    .replace(/\s*[-|–—]\s*(?:chapter|chapitre|chap|ch\.?)\s*\d+(?:\.\d+)?\s*.*$/i, '')
+    .replace(/\s*\b(?:chapter|chapitre|chap|ch\.?)\s*\d+(?:\.\d+)?\s*.*$/i, '')
+    .replace(/\bop\s*\d+\b/gi, '')
+    .replace(/\bop\d+\b/gi, '')
+    .replace(/\b\d+(?:\.\d+)?\b\s*$/i, '')
+    .replace(/[^a-z0-9]+/gi, ' ')
+    .trim()
+    .toLowerCase();
+  return out.replace(/\bmangamoins\b/gi, '').replace(/\s+/g, ' ').trim();
+}
+
+function getPopupWorkKey(title, url) {
+  const urlKey = getWorkKeyFromUrl(url);
+  if (urlKey) return urlKey;
+  const titleKey = normalizeTitleKeyPopupLike(title);
+  return titleKey ? `title:${titleKey}` : '';
+}
+
+async function mangaDexFindMangaId(title) {
+  const t = cleanTitleForMangaSearch(title);
+  if (!t) return null;
+  const url = `https://api.mangadex.org/manga?title=${encodeURIComponent(t)}&limit=5`;
+  const res = await fetch(url);
+  if (!res.ok) return null;
+  const json = await res.json();
+  const list = Array.isArray(json.data) ? json.data : [];
+  if (!list.length) return null;
+  const target = normTitleForMatch(t);
+  for (const e of list) {
+    const tt = e.attributes && e.attributes.title ? e.attributes.title : {};
+    const vals = Object.values(tt).filter(Boolean).map(String);
+    for (const v of vals) {
+      const n = normTitleForMatch(v);
+      if (!n || !target) continue;
+      if (n === target || n.includes(target) || target.includes(n)) return e.id;
+    }
+  }
+  return list[0].id;
+}
+
+async function mangaDexLatestChapterNumber(mangaId) {
+  if (!mangaId) return NaN;
+  const qs =
+    '?manga=' +
+    encodeURIComponent(mangaId) +
+    '&limit=1' +
+    '&order[chapter]=desc' +
+    '&translatedLanguage[]=fr' +
+    '&translatedLanguage[]=en';
+  let res = await fetch('https://api.mangadex.org/chapter' + qs);
+  if (!res.ok) return NaN;
+  let json = await res.json();
+  let attrs = json.data && json.data[0] ? json.data[0].attributes : null;
+  let chStr = attrs && attrs.chapter != null ? String(attrs.chapter).trim() : '';
+  let n = parseFloat(chStr.replace(',', '.'));
+  if (Number.isFinite(n)) return n;
+
+  const qsBare = '?manga=' + encodeURIComponent(mangaId) + '&limit=1&order[chapter]=desc';
+  res = await fetch('https://api.mangadex.org/chapter' + qsBare);
+  if (!res.ok) return NaN;
+  json = await res.json();
+  attrs = json.data && json.data[0] ? json.data[0].attributes : null;
+  chStr = attrs && attrs.chapter != null ? String(attrs.chapter).trim() : '';
+  n = parseFloat(chStr.replace(',', '.'));
+  return Number.isFinite(n) ? n : NaN;
+}
+
+async function scheduleNotifyAlarm() {
+  const { settings = {} } = await chrome.storage.local.get('settings');
+  await chrome.alarms.clear(NOTIFY_ALARM);
+  if (!settings.notifyNewChapters) return;
+  const periodMinutes = clampNotifyPeriodMinutes(settings.notifyFrequencyMinutes);
+  chrome.alarms.create(NOTIFY_ALARM, { periodInMinutes: periodMinutes });
+}
+
+async function runNewChapterChecks() {
+  const {
+    library = [],
+    settings = {},
+    chapterNotifyBaseline = {},
+    notifyClickUrls = {},
+    latestChapterCache = {}
+  } = await chrome.storage.local.get([
+    'library',
+    'settings',
+    'chapterNotifyBaseline',
+    'notifyClickUrls',
+    'latestChapterCache'
+  ]);
+
+  if (!settings.notifyNewChapters) return;
+
+  let baseline = chapterNotifyBaseline && typeof chapterNotifyBaseline === 'object' ? { ...chapterNotifyBaseline } : {};
+  let clickUrls =
+    notifyClickUrls && typeof notifyClickUrls === 'object' ? { ...notifyClickUrls } : {};
+  let latestCache =
+    latestChapterCache && typeof latestChapterCache === 'object' ? { ...latestChapterCache } : {};
+  const readings = library.filter((m) => (m.status || '') === 'reading' && String(m.title || '').trim());
+
+  const iconUrl = chrome.runtime.getURL('assets/icons/icon128.png');
+
+  for (const manga of readings) {
+    const workKey = manga.workKey || getWorkKey(manga.title, manga.url);
+    if (!workKey) continue;
+
+    const fc = manga.furthestChapter;
+    const lc = manga.lastChapter;
+    const userRead = Math.max(
+      parseFloat(String(fc != null ? fc : '').replace(',', '.')) || 0,
+      parseFloat(String(lc != null ? lc : '').replace(',', '.')) || 0
+    );
+
+    await sleep(400);
+    let mangaId;
+    try {
+      mangaId = await mangaDexFindMangaId(manga.title);
+    } catch (_) {
+      continue;
+    }
+    if (!mangaId) continue;
+
+    await sleep(200);
+    let latest = NaN;
+    try {
+      latest = await mangaDexLatestChapterNumber(mangaId);
+    } catch (_) {
+      latest = NaN;
+    }
+
+    if (!Number.isFinite(latest)) {
+      await sleep(150);
+      try {
+        const fallbackLatest = await scrapeLatestChapterFromSourceSite(manga.url);
+        if (Number.isFinite(fallbackLatest)) latest = fallbackLatest;
+      } catch (_) {
+        // ignore
+      }
+    }
+
+    if (!Number.isFinite(latest)) continue;
+
+    // Cache pour l'UI : dernier chapitre MangaDex trouvé pour cet oeuvre.
+    // On stocke sous plusieurs clés pour matcher le popup même si la normalisation diffère.
+    latestCache[workKey] = { latest, updatedAt: Date.now() };
+    const workKeyPopup = getPopupWorkKey(manga.title, manga.url);
+    if (workKeyPopup && workKeyPopup !== workKey) {
+      latestCache[workKeyPopup] = { latest, updatedAt: Date.now() };
+    }
+
+    if (baseline[workKey] === undefined || baseline[workKey] === null) {
+      baseline[workKey] = latest;
+      continue;
+    }
+
+    if (latest <= userRead) {
+      // Certaines sources (ou matches MangaDex approximatifs) peuvent retourner
+      // un "latest" inférieur à la progression utilisateur.
+      // On conserve une valeur cohérente pour l'UI et on évite toute régression.
+      const stableLatest = Math.max(latest, userRead);
+      latestCache[workKey] = { latest: stableLatest, updatedAt: Date.now() };
+      if (workKeyPopup && workKeyPopup !== workKey) {
+        latestCache[workKeyPopup] = { latest: stableLatest, updatedAt: Date.now() };
+      }
+      baseline[workKey] = Math.max(Number(baseline[workKey]) || 0, stableLatest);
+      continue;
+    }
+
+    if (latest <= Number(baseline[workKey])) continue;
+
+    const titleSuffix = manga.title ? String(manga.title) : 'Manga';
+    const notifId = `mc-nc-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+    const openUrl = String(manga.url || '').trim() || 'https://mangadex.org/title/' + encodeURIComponent(mangaId);
+    clickUrls[notifId] = openUrl;
+    if (Object.keys(clickUrls).length > 80) {
+      const keys = Object.keys(clickUrls).slice(-60);
+      const next = {};
+      keys.forEach((k) => {
+        next[k] = clickUrls[k];
+      });
+      clickUrls = next;
+    }
+
+    const msg =
+      userRead > 0
+        ? `${titleSuffix} — Nouveau chapitre : ${latest} (tu es au Ch. ${userRead})`
+        : `${titleSuffix} — Nouveau chapitre : ${latest}`;
+
+    const fallbackId = notifId + '-n';
+    try {
+      await chrome.notifications.create(notifId, {
+        type: 'basic',
+        iconUrl,
+        title: 'MangaCentral',
+        message: msg
+      });
+    } catch (_) {
+      clickUrls[fallbackId] = openUrl;
+      await chrome.notifications.create(fallbackId, {
+        type: 'basic',
+        title: 'MangaCentral',
+        message: `${titleSuffix} — Ch. ${latest}`
+      });
+    }
+
+    baseline[workKey] = latest;
+  }
+
+  // Empêche le stockage de grossir indéfiniment.
+  try {
+    const keys = Object.keys(latestCache);
+    if (keys.length > 250) {
+      keys.sort((a, b) => {
+        const ta = latestCache[a] && latestCache[a].updatedAt ? latestCache[a].updatedAt : 0;
+        const tb = latestCache[b] && latestCache[b].updatedAt ? latestCache[b].updatedAt : 0;
+        return tb - ta;
+      });
+      const keep = keys.slice(0, 220);
+      const next = {};
+      keep.forEach((k) => {
+        next[k] = latestCache[k];
+      });
+      latestCache = next;
+    }
+  } catch (_) {
+    // best-effort only
+  }
+
+  await chrome.storage.local.set({ chapterNotifyBaseline: baseline, notifyClickUrls: clickUrls, latestChapterCache: latestCache });
+}
+
+// Met a jour le cache des derniers chapitres (sans envoyer de notifications).
+async function refreshLatestChapterCache(options = {}) {
+  const force = !!(options && options.force);
+  const maxAgeMinutes = clampNotifyPeriodMinutes((options && options.maxAgeMinutes) || 180);
+  const maxAgeMs = maxAgeMinutes * 60 * 1000;
+  const now = Date.now();
+
+  const { library = [], latestChapterCache = {} } = await chrome.storage.local.get([
+    'library',
+    'latestChapterCache'
+  ]);
+
+  let latestCache =
+    latestChapterCache && typeof latestChapterCache === 'object' ? { ...latestChapterCache } : {};
+  const readings = library.filter((m) => (m.status || '') === 'reading' && String(m.title || '').trim());
+
+  for (const manga of readings) {
+    const workKey = manga.workKey || getWorkKey(manga.title, manga.url);
+    const workKeyPopup = getPopupWorkKey(manga.title, manga.url);
+    if (!workKey && !workKeyPopup) continue;
+
+    const cached = workKey ? latestCache[workKey] : undefined;
+    const cachedAt = cached && Number(cached.updatedAt);
+    if (!force && Number.isFinite(cachedAt) && now - cachedAt < maxAgeMs) continue;
+
+    await sleep(250);
+    let mangaId;
+    try {
+      mangaId = await mangaDexFindMangaId(manga.title);
+    } catch (_) {
+      continue;
+    }
+    if (!mangaId) mangaId = null;
+
+    await sleep(150);
+    let latest = NaN;
+    if (mangaId) {
+      try {
+        latest = await mangaDexLatestChapterNumber(mangaId);
+      } catch (_) {
+        latest = NaN;
+      }
+    }
+
+    if (!Number.isFinite(latest)) {
+      await sleep(150);
+      try {
+        const fallbackLatest = await scrapeLatestChapterFromSourceSite(manga.url);
+        if (Number.isFinite(fallbackLatest)) latest = fallbackLatest;
+      } catch (_) {
+        // ignore
+      }
+    }
+
+    if (!Number.isFinite(latest)) continue;
+
+    const fc = manga.furthestChapter;
+    const lc = manga.lastChapter;
+    const userRead = Math.max(
+      parseFloat(String(fc != null ? fc : '').replace(',', '.')) || 0,
+      parseFloat(String(lc != null ? lc : '').replace(',', '.')) || 0
+    );
+    if (userRead > 0 && latest + 1e-9 < userRead) {
+      // Ne jamais supprimer le cache sur une "régression" de source:
+      // on garde une valeur stable pour éviter que "chapitres disponibles"
+      // disparaisse dans le popup.
+      latest = userRead;
+    }
+
+    if (workKey) latestCache[workKey] = { latest, updatedAt: Date.now() };
+    if (workKeyPopup) latestCache[workKeyPopup] = { latest, updatedAt: Date.now() };
+  }
+
+  await chrome.storage.local.set({ latestChapterCache: latestCache });
+  return { ok: true, count: Object.keys(latestCache).length };
+}
+
+// Fetch "latest available chapter" from MangaDex for a single title,
+// and update latestChapterCache so the popup UI can show it.
+async function getLatestChapterForSingleTitle(payload = {}) {
+  const title = payload && payload.title ? String(payload.title) : '';
+  const url = payload && payload.url ? String(payload.url) : '';
+  if (!title) return { ok: false };
+
+  let mangaId;
+  try {
+    mangaId = await mangaDexFindMangaId(title);
+  } catch (_) {
+    mangaId = null;
+  }
+  if (!mangaId) return { ok: false };
+
+  let latest = NaN;
+  try {
+    latest = await mangaDexLatestChapterNumber(mangaId);
+  } catch (_) {
+    latest = NaN;
+  }
+  if (!Number.isFinite(latest)) return { ok: false };
+
+  const now = Date.now();
+  const workKey = getWorkKey(title, url);
+  const workKeyPopup = getPopupWorkKey(title, url);
+
+  const { latestChapterCache = {} } = await chrome.storage.local.get('latestChapterCache');
+  const nextCache =
+    latestChapterCache && typeof latestChapterCache === 'object' ? { ...latestChapterCache } : {};
+
+  if (workKey) nextCache[workKey] = { latest, updatedAt: now };
+  if (workKeyPopup && workKeyPopup !== workKey) nextCache[workKeyPopup] = { latest, updatedAt: now };
+
+  await chrome.storage.local.set({ latestChapterCache: nextCache });
+  return { ok: true, latest, workKey, workKeyPopup };
+}
+
 // 1. Gestion de l'installation
 chrome.runtime.onInstalled.addListener(() => {
   console.log('MangaCentral installé.');
-  chrome.storage.local.get(['readingHistory', 'settings', 'library'], (result) => {
-    if (!result.readingHistory) chrome.storage.local.set({ readingHistory: [] });
-    if (!result.library) chrome.storage.local.set({ library: [] });
-    if (!result.settings) {
-      chrome.storage.local.set({
-        settings: { autoScrollSpeed: 2, extensionDisabled: false, disabledHosts: [], displayLang: 'fr' }
-      });
-    }
+  chrome.storage.local.get(['readingHistory', 'settings', 'library', 'chapterNotifyBaseline', 'chapterEvents'], (result) => {
+    const setObj = {};
+    if (!result.readingHistory) setObj.readingHistory = [];
+    if (!result.library) setObj.library = [];
+    if (!Array.isArray(result.chapterEvents)) setObj.chapterEvents = [];
+    if (!result.chapterNotifyBaseline) setObj.chapterNotifyBaseline = {};
+
+    const prev = (result.settings && typeof result.settings === 'object') ? result.settings : {};
+    setObj.settings = {
+      ...prev,
+      autoScrollSpeed: typeof prev.autoScrollSpeed === 'number' ? prev.autoScrollSpeed : 2,
+      geminiApiKey: prev.geminiApiKey || '',
+      translationLang: prev.translationLang || 'fr',
+      extensionDisabled: prev.extensionDisabled === true,
+      disabledHosts: Array.isArray(prev.disabledHosts) ? prev.disabledHosts : [],
+      displayLang: prev.displayLang || 'fr',
+      notifyNewChapters: typeof prev.notifyNewChapters === 'boolean' ? prev.notifyNewChapters : false,
+      notifyFrequencyMinutes: clampNotifyPeriodMinutes(prev.notifyFrequencyMinutes ?? 360)
+    };
+
+    chrome.storage.local.set(setObj);
+    scheduleNotifyAlarm();
+  });
+});
+
+chrome.runtime.onStartup.addListener(() => {
+  scheduleNotifyAlarm();
+});
+
+chrome.alarms.onAlarm.addListener((alarm) => {
+  if (alarm && alarm.name === NOTIFY_ALARM) {
+    runNewChapterChecks().catch(() => {});
+  }
+});
+
+chrome.storage.onChanged.addListener((changes, area) => {
+  if (area !== 'local' || !changes.settings) return;
+  scheduleNotifyAlarm();
+});
+
+chrome.notifications.onClicked.addListener((notificationId) => {
+  chrome.storage.local.get(['notifyClickUrls'], (result) => {
+    const map = result.notifyClickUrls || {};
+    const url = map[notificationId] || 'https://mangadex.org';
+    chrome.tabs.create({ url: String(url) });
   });
 });
 
 // 2. Gestion des Messages
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   switch (message.type) {
+    case 'SCHEDULE_NOTIFY_ALARM':
+      scheduleNotifyAlarm().then(() => sendResponse({ ok: true })).catch(() => sendResponse({ ok: false }));
+      return true;
+    case 'REFRESH_LATEST_CHAPTER_CACHE':
+      refreshLatestChapterCache(message && message.payload ? message.payload : {})
+        .then((res) => sendResponse(res || { ok: true }))
+        .catch(() => sendResponse({ ok: false }));
+      return true;
+    case 'GET_LATEST_CHAPTER_FOR_MANGADEX':
+      getLatestChapterForSingleTitle(message && message.payload ? message.payload : {})
+        .then((res) => sendResponse(res || { ok: false }))
+        .catch(() => sendResponse({ ok: false }));
+      return true;
     case 'CHAPTER_DETECTED':
       StorageService.handleChapterDetected(message.payload, sender);
       break;

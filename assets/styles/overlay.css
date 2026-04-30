@@ -234,21 +234,12 @@
 
 .mc-controls-wrap {
   padding: 12px 14px 14px;
-  /* Permet à la zone des boutons de s’étirer quand on augmente la hauteur du panneau */
-  flex: 1 1 auto;
-  display: flex;
-  min-height: 0;
 }
 
 .mc-controls {
   display: grid;
   grid-template-columns: repeat(5, 1fr);
   gap: calc(8px * var(--mc-btn-scale, 1));
-  /* Fait occuper toute la hauteur disponible (resize vertical) */
-  width: 100%;
-  flex: 1 1 auto;
-  min-height: 0;
-  align-content: stretch;
 }
 
 .mc-controls .mc-btn {
@@ -267,8 +258,6 @@
   font-size: calc(11px * var(--mc-btn-scale, 1));
   font-weight: 500;
   min-height: calc(52px * var(--mc-btn-scale, 1));
-  /* Les boutons peuvent s’étirer verticalement */
-  height: 100%;
 }
 
 .mc-controls .mc-btn .mc-btn-icon {
@@ -294,6 +283,80 @@
 .mc-speed-control {
   padding: 10px 14px 14px;
   border-top: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.mc-chapter-nav {
+  padding: 10px 14px 12px;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  display: grid;
+  gap: 8px;
+}
+
+.mc-chapter-nav[hidden] {
+  display: none !important;
+}
+
+.mc-chapter-nav-title {
+  font-size: 11px;
+  color: #8b949e;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+.mc-chapter-nav-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.mc-chapter-jump-row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 8px;
+}
+
+.mc-chip-btn {
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.04);
+  color: #c9d1d9;
+  border-radius: 10px;
+  padding: 8px 10px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.16s ease;
+}
+
+.mc-chip-btn:hover {
+  border-color: rgba(0, 245, 255, 0.45);
+  color: #00f5ff;
+  background: rgba(0, 245, 255, 0.09);
+}
+
+.mc-chip-btn-primary {
+  background: linear-gradient(180deg, rgba(0, 245, 255, 0.18), rgba(0, 245, 255, 0.12));
+  border-color: rgba(0, 245, 255, 0.45);
+  color: #00f5ff;
+  min-width: 72px;
+}
+
+.mc-chip-btn-primary:hover {
+  background: linear-gradient(180deg, rgba(0, 245, 255, 0.25), rgba(0, 245, 255, 0.16));
+}
+
+.mc-chapter-input {
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(5, 8, 11, 0.85);
+  color: #e6edf3;
+  border-radius: 10px;
+  padding: 8px 10px;
+  font-size: 12px;
+  outline: none;
+}
+
+.mc-chapter-input:focus {
+  border-color: rgba(0, 245, 255, 0.5);
+  box-shadow: 0 0 0 2px rgba(0, 245, 255, 0.14);
 }
 
 .mc-speed-control input {
