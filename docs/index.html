@@ -55,6 +55,24 @@
       );
     }
 
+    /* Floating Kanji */
+    .kanji-bg {
+      position: fixed;
+      top: 50%;
+      transform: translateY(-50%);
+      font-size: 18rem;
+      font-weight: 900;
+      color: rgba(255, 255, 255, 0.04);
+      writing-mode: vertical-rl;
+      text-orientation: upright;
+      z-index: -1;
+      pointer-events: none;
+      user-select: none;
+      letter-spacing: -2rem;
+    }
+    .kanji-bg.left { left: 2rem; }
+    .kanji-bg.right { right: 2rem; }
+
     /* Scrollbar */
     ::-webkit-scrollbar { width: 12px; }
     ::-webkit-scrollbar-track { background: var(--bg-base); border-left: 2px solid #333; }
@@ -340,6 +358,8 @@
 <body>
 
   <div class="bg-anim"></div>
+  <div class="kanji-bg left">漫画</div>
+  <div class="kanji-bg right">만화</div>
 
   <header>
     <a href="#" class="brand">
