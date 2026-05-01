@@ -125,14 +125,25 @@ function startUrlWatch(ui) {
   chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
     if (msg.type === 'GET_ALL_HREFS') {
       try {
-        const hrefs = Array.from(document.querySelectorAll('a[href]'))
+        const aHrefs = Array.from(document.querySelectorAll('a[href]'))
           .map((a) => a.getAttribute('href') || '')
           .filter(Boolean);
+        const options = Array.from(document.querySelectorAll('option[value], option[data-c], option[data-redirect]'))
+          .map((o) => o.getAttribute('value') || o.getAttribute('data-c') || o.getAttribute('data-redirect') || '')
+          .filter((v) => typeof v === 'string' && (v.startsWith('http') || v.startsWith('/')));
+        const hrefs = [...aHrefs, ...options];
         sendResponse({ hrefs });
       } catch (_) {
         sendResponse({ hrefs: [] });
       }
       return false;
+    }
+    if (msg.type === 'FETCH_URL' && msg.url) {
+      fetch(msg.url)
+        .then((r) => r.text())
+        .then((html) => sendResponse({ html }))
+        .catch(() => sendResponse({ html: null }));
+      return true;
     }
     if (msg.type !== 'GET_META') return false;
     (async () => {

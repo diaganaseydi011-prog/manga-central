@@ -206,6 +206,12 @@ function extractLatestFromHrefs(hrefs, baseUrl) {
   const numbers = [];
   const chapterLikePath = /(chapter|chapitre|chap|scan|read|episode|viewer|lecture|view)/i;
 
+  let baseSlug = '';
+  try {
+    const p = new URL(base).pathname.replace(/\/$/, '');
+    baseSlug = p.split('/').pop() || '';
+  } catch {}
+
   for (const rawHref of hrefs) {
     const href = String(rawHref || '').trim();
     if (!href || href.startsWith('javascript:') || href.startsWith('#')) continue;
@@ -223,6 +229,14 @@ function extractLatestFromHrefs(hrefs, baseUrl) {
       pathname = '';
     }
     if (!chapterLikePath.test(pathname)) continue;
+    
+    // Ensure the link belongs to the same manga (filter out sidebars)
+    if (baseSlug && !pathname.includes(baseSlug) && !pathname.includes(encodeURIComponent(baseSlug))) {
+       const segments = pathname.split('/').filter(Boolean);
+       if (segments.length > 2) {
+          continue; // Likely belongs to another manga
+       }
+    }
 
     const chStr = extractChapterNumberFromUrlLikeGeneric(abs);
     if (!chStr) continue;
@@ -239,18 +253,34 @@ function extractLatestFromHrefs(hrefs, baseUrl) {
 
 async function fetchAndExtractLatestFromWorkUrl(workUrl) {
   let html = '';
+  
+  // Try to fetch using the active tab to bypass Cloudflare
   try {
-    const res = await fetch(workUrl, { redirect: 'follow' });
-    if (!res.ok) return null;
-    const ct = res.headers.get('content-type') || '';
-    if (!ct.toLowerCase().includes('text/html')) return null;
-    html = await res.text();
-  } catch {
-    return null;
+    const tabs = await new Promise(r => chrome.tabs.query({ active: true, lastFocusedWindow: true }, r));
+    const tab = tabs[0];
+    if (tab && tab.id && !tab.url.startsWith('chrome')) {
+       const resp = await new Promise(r => chrome.tabs.sendMessage(tab.id, { type: 'FETCH_URL', url: workUrl }, r));
+       if (resp && resp.html) html = resp.html;
+    }
+  } catch {}
+
+  // Fallback to background fetch
+  if (!html) {
+    try {
+      const res = await fetch(workUrl, { redirect: 'follow' });
+      if (res.ok) {
+        const ct = res.headers.get('content-type') || '';
+        if (ct.toLowerCase().includes('text/html')) {
+           html = await res.text();
+        }
+      }
+    } catch {}
   }
+  
+  if (!html) return null;
 
   const hrefs = [];
-  const hrefRe = /\shref\s*=\s*(?:"([^"]+)"|'([^']+)'|([^\s>]+))/gi;
+  const hrefRe = /\s(?:href|value|data-c|data-redirect)\s*=\s*(?:"([^"]+)"|'([^']+)'|([^\s>]+))/gi;
   let m;
   while ((m = hrefRe.exec(html))) {
     const href = (m[1] || m[2] || m[3] || '').trim();
@@ -546,6 +576,9 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     case 'SYNC_ANILIST':
       AnilistService.syncManual(sendResponse);
       return true;
+    case 'IMPORT_ANILIST':
+      AnilistService.pullFromAnilist(sendResponse);
+      return true;
     case 'LOGIN_ANILIST':
       const clientId = '40372';
       const authUrl = `https://anilist.co/api/v2/oauth/authorize?client_id=${clientId}&response_type=token`;
@@ -587,10 +620,39 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
           const targetKey = getWorkKey(target.title, target.url);
           const exists = library.find(m => getWorkKey(m.title, m.url) === targetKey);
           if (!exists) {
-            library.unshift({ ...target, status: 'reading', addedAt: Date.now() });
+            library.unshift({ ...target, id: 'gen_' + Date.now() + '_' + Math.random().toString(36).substring(2, 9), status: 'reading', addedAt: Date.now() });
             await chrome.storage.local.set({ library });
           }
           sendResponse({ ok: true });
+        } catch (_) {
+          sendResponse({ ok: false });
+        }
+      })();
+      return true;
+    case 'MERGE_LIBRARY_ITEM':
+      (async () => {
+        try {
+          const { library = [] } = await chrome.storage.local.get(['library']);
+          const { id, newMeta } = message.payload;
+          if (!id || !newMeta || !newMeta.url) return sendResponse({ ok: false });
+          const match = library.find(m => m.id === id);
+          if (match) {
+            match.url = newMeta.url;
+            match.title = newMeta.title;
+            const newCh = parseFloat(newMeta.chapter) || 0;
+            const oldCh = parseFloat(match.lastChapter) || 0;
+            if (newCh > oldCh) {
+               match.lastChapter = newMeta.chapter;
+               match.furthestChapter = Math.max(parseFloat(match.furthestChapter) || 0, newCh);
+            }
+            if (newMeta.cover) match.cover = newMeta.cover;
+            match.workKey = getWorkKey(newMeta.title, newMeta.url);
+            match.lastRead = Date.now();
+            await chrome.storage.local.set({ library });
+            sendResponse({ ok: true });
+          } else {
+            sendResponse({ ok: false });
+          }
         } catch (_) {
           sendResponse({ ok: false });
         }
@@ -690,8 +752,9 @@ function handleGetCurrentPageMeta(sendResponse) {
           const getMeta = (doc, loc) => {
             const ogTitle = doc.querySelector('meta[property="og:title"]');
             const title = (ogTitle && ogTitle.content) || (doc.querySelector('h1') && doc.querySelector('h1').innerText) || doc.title || '';
-            const cleanTitle =
-              title
+            let cleanTitle = title.split(/\s+[-|:–—]\s+/)[0];
+            cleanTitle =
+              cleanTitle
                 .replace(/\s*[-|–—]\s*(?:Chapitre|Chapter|Ch\.?|Chap)\s*\d+.*$/i, '')
                 .trim() || title;
             const ch = getChapterFromUrl(loc.href || '');
@@ -830,16 +893,30 @@ function handleChapterDetected(meta, sender) {
 // --- ANILIST SYNC SERVICE ---
 const AnilistService = {
   async getMediaId(title) {
+    if (!title) return null;
     try {
-      const cleanTitle = (title || '').replace(/\s*[|–—-]\s*(?:scan|scans|vf|vostfr|raw|manga|manhwa|webtoon)\b.*$/i, '').trim().slice(0, 80);
+      let cleanTitle = title.split(/\s+[-|:–—]\s+/)[0];
+
+      cleanTitle = cleanTitle
+        .replace(/chapitre\s*\d+(\.\d+)?/gi, '')
+        .replace(/chapter\s*\d+(\.\d+)?/gi, '')
+        .replace(/ch[\.\s]*\d+(\.\d+)?/gi, '')
+        .replace(/\b(vf|vostfr|raw|scan|scans|manga|manhwa|manhua|webtoon|lire|lecture|en ligne|gratuit|chap|online|read)\b/gi, '')
+        .replace(/[-|:!\[\]\(\)]/g, ' ')
+        .replace(/\s+/g, ' ')
+        .trim()
+        .slice(0, 80);
+
+      if (!cleanTitle) return null;
+
       const query = `query($search: String) { Page(page: 1, perPage: 1) { media(type: MANGA, search: $search) { id } } }`;
-      const res = await fetch('https://graphql.anilist.co', {
+      
+      let res = await fetch('https://graphql.anilist.co', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ query, variables: { search: cleanTitle } })
       });
-      if (!res.ok) return null;
-      const data = await res.json();
+      let data = await res.json();
       return data.data?.Page?.media?.[0]?.id || null;
     } catch (_) { return null; }
   },
@@ -906,6 +983,114 @@ const AnilistService = {
       sendResponse({ ok: true });
     } catch (_) {
       sendResponse({ ok: false });
+    }
+  },
+
+  async pullFromAnilist(sendResponse) {
+    try {
+      const { library = [], settings = {} } = await chrome.storage.local.get(['library', 'settings']);
+      const token = settings.anilistToken;
+      if (!token) return sendResponse({ ok: false, error: 'no_token' });
+
+      // 1. Get User ID & Name
+      let res = await fetch('https://graphql.anilist.co', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        body: JSON.stringify({ query: 'query { Viewer { id name } }' })
+      });
+      if (!res.ok) throw new Error('Viewer fetch failed: ' + res.statusText);
+      let data = await res.json();
+      if (data.errors) {
+         console.error('AniList Viewer Error:', data.errors);
+         throw new Error('Viewer Error: ' + data.errors[0]?.message);
+      }
+      const userId = data.data?.Viewer?.id;
+      const userName = data.data?.Viewer?.name;
+      if (!userId || !userName) throw new Error('No user id/name found');
+
+      // 2. Get MediaList
+      res = await fetch('https://graphql.anilist.co', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        body: JSON.stringify({ 
+           query: `query($userName: String) { MediaListCollection(userName: $userName, type: MANGA) { lists { entries { status progress media { id title { romaji english userPreferred } coverImage { large } } } } } }`,
+           variables: { userName }
+        })
+      });
+      if (!res.ok) throw new Error('List fetch failed: ' + res.statusText);
+      data = await res.json();
+      
+      if (data.errors) {
+         console.error('AniList API Error:', data.errors);
+         throw new Error(data.errors[0]?.message || 'GraphQL Error');
+      }
+
+      const lists = data.data?.MediaListCollection?.lists || [];
+      let entries = [];
+      for (const list of lists) {
+         if (list.entries) entries.push(...list.entries);
+      }
+
+      let updated = false;
+      const now = Date.now();
+      let importCount = 0;
+
+      for (const entry of entries) {
+         const anilistId = entry.media?.id;
+         const titleObj = entry.media?.title || {};
+         const title = titleObj.userPreferred || titleObj.romaji || titleObj.english;
+         const progress = entry.progress || 0;
+         const cover = entry.media?.coverImage?.large;
+         const aniStatus = entry.status;
+         
+         if (!anilistId || !title) continue;
+
+         let localStatus = 'reading';
+         if (aniStatus === 'COMPLETED') localStatus = 'completed';
+         else if (aniStatus === 'PAUSED' || aniStatus === 'DROPPED') localStatus = 'paused';
+         else if (aniStatus === 'PLANNING') localStatus = 'paused';
+
+         let match = library.find(m => m.anilistId === anilistId);
+         if (!match) {
+            const cleanT = title.replace(/\s*[|–—-]\s*(?:scan|scans|vf|vostfr|raw|manga|manhwa|webtoon)\b.*$/i, '').trim().toLowerCase();
+            match = library.find(m => m.title && m.title.toLowerCase().includes(cleanT));
+         }
+
+         if (match) {
+            match.anilistId = anilistId;
+            // Ne pas écraser le statut local s'il est déjà pertinent, mais mettre à jour la progression
+            const currentCh = parseFloat(match.furthestChapter) || parseFloat(match.lastChapter) || 0;
+            if (progress > currentCh) {
+               match.furthestChapter = progress;
+               match.lastChapter = progress;
+               updated = true;
+            }
+            importCount++;
+         } else {
+            const workKey = getWorkKey(title, 'anilist:' + anilistId);
+            library.unshift({
+               id: 'ani_' + anilistId,
+               title: title,
+               url: '',
+               status: localStatus,
+               lastChapter: progress,
+               furthestChapter: progress,
+               anilistId: anilistId,
+               cover: cover || '',
+               addedAt: now,
+               lastRead: now,
+               workKey: workKey,
+               source: 'AniList Import'
+            });
+            updated = true;
+            importCount++;
+         }
+      }
+
+      if (updated) await chrome.storage.local.set({ library });
+      sendResponse({ ok: true, count: importCount, debug: { userName, listsCount: lists.length, entriesCount: entries.length } });
+    } catch (e) {
+      sendResponse({ ok: false, error: e.message });
     }
   }
 };
@@ -1378,3 +1563,33 @@ async function handleSearch(query, sendResponse) {
     sendResponse({ results: [] });
   }
 }
+
+// --- ONE TIME FIX: Repair library issues and corrupt Anilist links ---
+chrome.storage.local.get(['library', 'latestChapterCache'], (res) => {
+  if (!res.library || !Array.isArray(res.library)) return;
+  let updated = false;
+  res.library.forEach(m => {
+    if (m.anilistId && String(m.anilistId).startsWith('gen_')) {
+      delete m.anilistId;
+      updated = true;
+    }
+    if (!m.id) {
+      m.id = 'gen_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+      updated = true;
+    }
+    if (m.title && m.title.toLowerCase().includes('apocalypse class death knight')) {
+       if (parseFloat(m.furthestChapter) > 100 || parseFloat(m.lastChapter) > 100) {
+          m.furthestChapter = 60;
+          m.lastChapter = 60;
+          updated = true;
+       }
+    }
+  });
+  if (updated) {
+    chrome.storage.local.set({ library: res.library });
+    console.log('Library repaired.');
+  }
+  if (res.latestChapterCache) {
+    chrome.storage.local.set({ latestChapterCache: {} });
+  }
+});

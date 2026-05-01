@@ -94,6 +94,7 @@
     async getMeta() {
       var _a, _b, _c;
       let title = ((_a = this.document.querySelector('meta[property="og:title"]')) == null ? void 0 : _a.content) || ((_b = this.document.querySelector("h1")) == null ? void 0 : _b.innerText) || this.document.title;
+      title = (title || "").toString().split(/\s+[-|:–—]\s+/)[0];
       title = title.replace(/(Read|Scan|Manga|Manhwa|Free)\s/gi, "").trim();
       let chapter = "Inconnu";
       const urlCh = getChapterFromUrl(window.location.href);
@@ -767,7 +768,9 @@
      * Appelé quand l’utilisateur navigue vers un autre chapitre sans recharger la page.
      */
     _cleanDisplayTitle(t) {
-      return (t || "").replace(/\s*[-|–—]\s*(?:read|lecture|chapter|scan|scans).*$/i, "").replace(/\s*\|.*$/i, "").trim();
+      let out = (t || "").toString();
+      out = out.split(/\s+[-|:–—]\s+/)[0];
+      return out.replace(/\s*[-|–—]\s*(?:read|lecture|chapter|scan|scans).*$/i, "").replace(/\s*\|.*$/i, "").trim();
     }
     updateMeta(meta, parser = null) {
       if (parser) this.parser = parser;
@@ -784,8 +787,18 @@
       this._updateLibraryStatus();
     }
     _normalizeTitle(t) {
-      const out = (t || "").toString().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/\s*[-|–—]\s*(?:mangamoins(?:\.[a-z]{2,})?|manga\s*moins)\s*$/i, "").replace(/\s*[|–—-]\s*(?:scan|scans|manga|manhwa|webtoon)\b.*$/i, "").replace(/\s*[-|–—]\s*(?:chapter|chapitre|chap|ch\.?)\s*\d+(?:\.\d+)?\s*.*$/i, "").replace(/\s*\b(?:chapter|chapitre|chap|ch\.?)\s*\d+(?:\.\d+)?\s*.*$/i, "").replace(/\bop\s*\d+\b/gi, "").replace(/\bop\d+\b/gi, "").replace(/\b\d+(?:\.\d+)?\b\s*$/i, "").replace(/[^a-z0-9]+/gi, " ").trim().toLowerCase();
+      let out = (t || "").toString();
+      out = out.split(/\s+[-|:–—]\s+/)[0];
+      out = out.normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/\s*[-|–—]\s*(?:mangamoins(?:\.[a-z]{2,})?|manga\s*moins)\s*$/i, "").replace(/\s*[|–—-]\s*(?:scan|scans|manga|manhwa|webtoon)\b.*$/i, "").replace(/\s*[-|–—]\s*(?:chapter|chapitre|chap|ch\.?)\s*\d+(?:\.\d+)?\s*.*$/i, "").replace(/\s*\b(?:chapter|chapitre|chap|ch\.?)\s*\d+(?:\.\d+)?\s*.*$/i, "").replace(/\bop\s*\d+\b/gi, "").replace(/\bop\d+\b/gi, "").replace(/\b\d+(?:\.\d+)?\b\s*$/i, "").replace(/[^a-z0-9]+/gi, " ").trim().toLowerCase();
       return out.replace(/\bmangamoins\b/gi, "").replace(/\s+/g, " ").trim();
+    }
+    _getDomain(url) {
+      if (!url) return "";
+      try {
+        return new URL(url).hostname.replace(/^www\./, "");
+      } catch {
+        return "";
+      }
     }
     async _updateLibraryStatus() {
       if (!this.shadowRoot || !this.currentMeta) return;
@@ -806,17 +819,42 @@
             });
           });
         } else {
-          const cacheEntry = latestChapterCache[match.workKey] || latestChapterCache[match.workKeyPopup];
-          const latestDex = cacheEntry && cacheEntry.latest ? cacheEntry.latest : null;
-          if (latestDex != null) {
-            const current = parseFloat(String(this.currentMeta.chapter).replace(",", "."));
-            if (Number.isFinite(current) && latestDex > current) {
-              container.innerHTML = `<span class="mc-lib-status-text mc-lib-new">${this.t("lib_latest", { latest: latestDex })}</span>`;
-            } else {
-              container.innerHTML = `<span class="mc-lib-status-text mc-lib-ok">${this.t("lib_uptodate")}</span>`;
-            }
+          const currentDomain = this._getDomain(this.currentMeta.url);
+          const matchDomain = this._getDomain(match.url);
+          if (currentDomain && matchDomain && currentDomain !== matchDomain) {
+            container.innerHTML = `
+              <div style="display:flex; gap:5px; margin-top:5px;">
+                <button type="button" class="mc-btn-add-lib mc-btn-merge" style="background:#f39c12; font-size:11px;" title="Remplacer le lien du site actuel (${matchDomain} -> ${currentDomain})">Fusionner</button>
+                <button type="button" class="mc-btn-add-lib mc-btn-new" style="background:#555; font-size:11px;" title="Créer une nouvelle entrée séparée">Séparer</button>
+              </div>
+            `;
+            container.querySelector(".mc-btn-merge").addEventListener("click", (e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              chrome.runtime.sendMessage({ type: "MERGE_LIBRARY_ITEM", payload: { id: match.id, newMeta: this.currentMeta } }, () => {
+                this._updateLibraryStatus();
+              });
+            });
+            container.querySelector(".mc-btn-new").addEventListener("click", (e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              chrome.runtime.sendMessage({ type: "ADD_TO_LIBRARY", payload: this.currentMeta }, () => {
+                this._updateLibraryStatus();
+              });
+            });
           } else {
-            container.innerHTML = `<span class="mc-lib-status-text"></span>`;
+            const cacheEntry = latestChapterCache[match.workKey] || latestChapterCache[match.workKeyPopup];
+            const latestDex = cacheEntry && cacheEntry.latest ? cacheEntry.latest : null;
+            if (latestDex != null) {
+              const current = parseFloat(String(this.currentMeta.chapter).replace(",", "."));
+              if (Number.isFinite(current) && latestDex > current) {
+                container.innerHTML = `<span class="mc-lib-status-text mc-lib-new">${this.t("lib_latest", { latest: latestDex })}</span>`;
+              } else {
+                container.innerHTML = `<span class="mc-lib-status-text mc-lib-ok">${this.t("lib_uptodate")}</span>`;
+              }
+            } else {
+              container.innerHTML = `<span class="mc-lib-status-text"></span>`;
+            }
           }
         }
       } catch (err) {
@@ -1882,12 +1920,18 @@
     chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
       if (msg.type === "GET_ALL_HREFS") {
         try {
-          const hrefs = Array.from(document.querySelectorAll("a[href]")).map((a) => a.getAttribute("href") || "").filter(Boolean);
+          const aHrefs = Array.from(document.querySelectorAll("a[href]")).map((a) => a.getAttribute("href") || "").filter(Boolean);
+          const options = Array.from(document.querySelectorAll("option[value], option[data-c], option[data-redirect]")).map((o) => o.getAttribute("value") || o.getAttribute("data-c") || o.getAttribute("data-redirect") || "").filter((v) => typeof v === "string" && (v.startsWith("http") || v.startsWith("/")));
+          const hrefs = [...aHrefs, ...options];
           sendResponse({ hrefs });
         } catch (_) {
           sendResponse({ hrefs: [] });
         }
         return false;
+      }
+      if (msg.type === "FETCH_URL" && msg.url) {
+        fetch(msg.url).then((r) => r.text()).then((html) => sendResponse({ html })).catch(() => sendResponse({ html: null }));
+        return true;
       }
       if (msg.type !== "GET_META") return false;
       (async () => {

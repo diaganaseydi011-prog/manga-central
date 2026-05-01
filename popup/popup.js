@@ -157,8 +157,9 @@ class PopupManager {
   }
 
   _normalizeTitle(t) {
-    const out = (t || '')
-      .toString()
+    let out = (t || '').toString();
+    out = out.split(/\s+[-|:–—]\s+/)[0];
+    return out
       .normalize('NFD')
       .replace(/[\u0300-\u036f]/g, '')
       .replace(/\s*[-|–—]\s*(?:mangamoins(?:\.[a-z]{2,})?|manga\s*moins)\s*$/i, '')
@@ -466,6 +467,7 @@ class PopupManager {
         settings_anilist_token: 'Jeton AniList (Optionnel)',
         settings_anilist_token_placeholder: 'Jeton d\'accès personnel...',
         settings_sync_anilist: 'Forcer la synchro AniList',
+        settings_import_anilist: 'Importer mes œuvres depuis AniList',
         settings_anilist_not_connected: 'Non connecté',
         settings_anilist_connected: 'Connecté',
         settings_anilist_login: 'Se connecter avec AniList',
@@ -600,6 +602,7 @@ class PopupManager {
         settings_anilist_token: 'AniList Token (Optional)',
         settings_anilist_token_placeholder: 'Personal access token...',
         settings_sync_anilist: 'Force AniList sync',
+        settings_import_anilist: 'Import works from AniList',
         settings_anilist_not_connected: 'Not connected',
         settings_anilist_connected: 'Connected',
         settings_anilist_login: 'Login with AniList',
@@ -1805,6 +1808,8 @@ class PopupManager {
     const loginAnilistBtn = document.getElementById('loginAnilistBtn');
     const logoutAnilistBtn = document.getElementById('logoutAnilistBtn');
     const anilistStatusText = document.getElementById('anilistStatusText');
+    const syncAnilistBtn = document.getElementById('syncAnilistBtn');
+    const importAnilistBtn = document.getElementById('importAnilistBtn');
 
     const updateAnilistUI = () => {
       if (this.settings.anilistToken) {
@@ -1813,12 +1818,16 @@ class PopupManager {
         anilistStatusText.style.color = '#50fa7b';
         loginAnilistBtn.style.display = 'none';
         logoutAnilistBtn.style.display = 'block';
+        if (syncAnilistBtn) syncAnilistBtn.style.display = 'block';
+        if (importAnilistBtn) importAnilistBtn.style.display = 'block';
       } else {
         anilistStatusText.setAttribute('data-i18n', 'settings_anilist_not_connected');
         anilistStatusText.textContent = this.t('settings_anilist_not_connected');
         anilistStatusText.style.color = '#8b949e';
         loginAnilistBtn.style.display = 'block';
         logoutAnilistBtn.style.display = 'none';
+        if (syncAnilistBtn) syncAnilistBtn.style.display = 'none';
+        if (importAnilistBtn) importAnilistBtn.style.display = 'none';
       }
     };
 
@@ -1842,6 +1851,24 @@ class PopupManager {
         await this.saveSettings();
         updateAnilistUI();
       });
+
+      if (importAnilistBtn) {
+        importAnilistBtn.addEventListener('click', () => {
+          this.showToast('Importation AniList en cours...', 'info');
+          chrome.runtime.sendMessage({ type: 'IMPORT_ANILIST' }, async (res) => {
+            if (res && res.ok) {
+              await this.loadData();
+              this.renderLibrary();
+              this.renderDashboard();
+              let msg = `Import terminé (${res.count || 0} nouvelles/mises à jour).`;
+              if (res.debug) msg += ` Trouvées pour ${res.debug.userName}: ${res.debug.entriesCount} (listes: ${res.debug.listsCount}).`;
+              this.showToast(msg, 'success');
+            } else {
+              this.showToast(res && res.error ? res.error : this.t('search_error'), 'error');
+            }
+          });
+        });
+      }
     }
   }
 

@@ -64,15 +64,14 @@ export default class GenericParser extends BaseParser {
   }
 
   async getMeta() {
-    // 1. Titre : Cherche og:title ou h1
     let title = this.document.querySelector('meta[property="og:title"]')?.content 
                 || this.document.querySelector('h1')?.innerText 
                 || this.document.title;
     
-    // Nettoyage basique (enlève "Read", "Scan", etc.)
+    // Couper au premier séparateur entouré d'espaces (ex: "Titre - Site Web")
+    title = (title || '').toString().split(/\s+[-|:–—]\s+/)[0];
     title = title.replace(/(Read|Scan|Manga|Manhwa|Free)\s/gi, '').trim();
 
-    // 2. Chapitre : variantes slug, ID, query, hiérarchie (voir getChapterFromUrl)
     let chapter = "Inconnu";
     const urlCh = getChapterFromUrl(window.location.href);
     if (urlCh) chapter = urlCh;

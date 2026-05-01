@@ -245,7 +245,9 @@ export default class UIManager {
      * Appelé quand l’utilisateur navigue vers un autre chapitre sans recharger la page.
      */
     _cleanDisplayTitle(t) {
-      return (t || '')
+      let out = (t || '').toString();
+      out = out.split(/\s+[-|:–—]\s+/)[0];
+      return out
         .replace(/\s*[-|–—]\s*(?:read|lecture|chapter|scan|scans).*$/i, '')
         .replace(/\s*\|.*$/i, '')
         .trim();
@@ -267,8 +269,10 @@ export default class UIManager {
     }
   
     _normalizeTitle(t) {
-      const out = (t || '')
-        .toString()
+      let out = (t || '').toString();
+      // Couper au premier séparateur entouré d'espaces (ex: "Titre - Site Web")
+      out = out.split(/\s+[-|:–—]\s+/)[0];
+      out = out
         .normalize('NFD')
         .replace(/[\u0300-\u036f]/g, '')
         .replace(/\s*[-|–—]\s*(?:mangamoins(?:\.[a-z]{2,})?|manga\s*moins)\s*$/i, '')
@@ -282,6 +286,15 @@ export default class UIManager {
         .trim()
         .toLowerCase();
       return out.replace(/\bmangamoins\b/gi, '').replace(/\s+/g, ' ').trim();
+    }
+
+    _getDomain(url) {
+      if (!url) return '';
+      try {
+        return new URL(url).hostname.replace(/^www\./, '');
+      } catch {
+        return '';
+      }
     }
 
     async _updateLibraryStatus() {
@@ -305,17 +318,43 @@ export default class UIManager {
             });
           });
         } else {
-          const cacheEntry = latestChapterCache[match.workKey] || latestChapterCache[match.workKeyPopup];
-          const latestDex = cacheEntry && cacheEntry.latest ? cacheEntry.latest : null;
-          if (latestDex != null) {
-            const current = parseFloat(String(this.currentMeta.chapter).replace(',', '.'));
-            if (Number.isFinite(current) && latestDex > current) {
-              container.innerHTML = `<span class="mc-lib-status-text mc-lib-new">${this.t('lib_latest', { latest: latestDex })}</span>`;
-            } else {
-              container.innerHTML = `<span class="mc-lib-status-text mc-lib-ok">${this.t('lib_uptodate')}</span>`;
-            }
+          const currentDomain = this._getDomain(this.currentMeta.url);
+          const matchDomain = this._getDomain(match.url);
+
+          if (currentDomain && matchDomain && currentDomain !== matchDomain) {
+            container.innerHTML = `
+              <div style="display:flex; gap:5px; margin-top:5px;">
+                <button type="button" class="mc-btn-add-lib mc-btn-merge" style="background:#f39c12; font-size:11px;" title="Remplacer le lien du site actuel (${matchDomain} -> ${currentDomain})">Fusionner</button>
+                <button type="button" class="mc-btn-add-lib mc-btn-new" style="background:#555; font-size:11px;" title="Créer une nouvelle entrée séparée">Séparer</button>
+              </div>
+            `;
+            container.querySelector('.mc-btn-merge').addEventListener('click', (e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              chrome.runtime.sendMessage({ type: 'MERGE_LIBRARY_ITEM', payload: { id: match.id, newMeta: this.currentMeta } }, () => {
+                this._updateLibraryStatus();
+              });
+            });
+            container.querySelector('.mc-btn-new').addEventListener('click', (e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              chrome.runtime.sendMessage({ type: 'ADD_TO_LIBRARY', payload: this.currentMeta }, () => {
+                this._updateLibraryStatus();
+              });
+            });
           } else {
-            container.innerHTML = `<span class="mc-lib-status-text"></span>`;
+            const cacheEntry = latestChapterCache[match.workKey] || latestChapterCache[match.workKeyPopup];
+            const latestDex = cacheEntry && cacheEntry.latest ? cacheEntry.latest : null;
+            if (latestDex != null) {
+              const current = parseFloat(String(this.currentMeta.chapter).replace(',', '.'));
+              if (Number.isFinite(current) && latestDex > current) {
+                container.innerHTML = `<span class="mc-lib-status-text mc-lib-new">${this.t('lib_latest', { latest: latestDex })}</span>`;
+              } else {
+                container.innerHTML = `<span class="mc-lib-status-text mc-lib-ok">${this.t('lib_uptodate')}</span>`;
+              }
+            } else {
+              container.innerHTML = `<span class="mc-lib-status-text"></span>`;
+            }
           }
         }
       } catch (err) {

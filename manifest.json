@@ -3,7 +3,7 @@
   "name": "MangaCentral",
   "version": "1.1.0",
   "description": "Centralisation, suivi de lecture et outils d'assistance pour mangas/manhwas.",
-  "permissions": ["activeTab", "storage", "scripting", "tabs"],
+  "permissions": ["activeTab", "storage", "scripting", "tabs", "declarativeNetRequest", "declarativeNetRequestWithHostAccess"],
   "host_permissions": ["<all_urls>"],
   "action": {
     "default_popup": "popup/popup.html",
@@ -24,6 +24,15 @@
     "16": "assets/icons/icon16.png",
     "48": "assets/icons/icon48.png",
     "128": "assets/icons/icon128.png"
+  },
+  "declarative_net_request": {
+    "rule_resources": [
+      {
+        "id": "rules",
+        "enabled": true,
+        "path": "rules.json"
+      }
+    ]
   },
   "content_security_policy": { "extension_pages": "script-src 'self'; object-src 'self'" }
 }
