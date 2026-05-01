@@ -60,18 +60,20 @@
       position: fixed;
       top: 50%;
       transform: translateY(-50%);
-      font-size: 18rem;
+      font-size: 10rem;
       font-weight: 900;
-      color: rgba(255, 255, 255, 0.04);
+      color: rgba(255, 255, 255, 0.08);
       writing-mode: vertical-rl;
       text-orientation: upright;
-      z-index: -1;
+      z-index: 5;
       pointer-events: none;
       user-select: none;
-      letter-spacing: -2rem;
+      letter-spacing: 1rem;
+      text-shadow: 4px 4px 0px rgba(255, 0, 85, 0.05);
+      white-space: nowrap;
     }
-    .kanji-bg.left { left: 2rem; }
-    .kanji-bg.right { right: 2rem; }
+    .kanji-bg.left { left: 1rem; }
+    .kanji-bg.right { right: 1rem; }
 
     /* Scrollbar */
     ::-webkit-scrollbar { width: 12px; }
@@ -137,6 +139,8 @@
       margin: 70px auto 0;
       width: 100%;
       flex: 1;
+      position: relative;
+      z-index: 10;
     }
 
     /* Sidebar */
@@ -358,8 +362,8 @@
 <body>
 
   <div class="bg-anim"></div>
-  <div class="kanji-bg left">漫画</div>
-  <div class="kanji-bg right">만화</div>
+  <div class="kanji-bg left">漫画 • 漫畫</div>
+  <div class="kanji-bg right">만화 • MANHWA</div>
 
   <header>
     <a href="#" class="brand">
