@@ -4,23 +4,28 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="google-site-verification" content="n7D1F1REjKuO8cy9CslXSwndoB01N-0bx2jzpjSxmJg">
-  <title>Documentation MangaCentral</title>
-  <meta name="description" content="Guide d'utilisation complet pour l'extension MangaCentral : fonctionnalités, astuces et résolution des problèmes courants.">
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <title>MangaCentral - Guide Ultime</title>
+  <meta name="description" content="Documentation officielle et guide d'utilisation de MangaCentral.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Orbitron:wght@600;700&display=swap" rel="stylesheet">
   <style>
     :root {
-      --bg-base: #050505;
-      --bg-surface: #111111;
-      --bg-surface-hover: #1a1a1a;
-      --text-main: #f3f4f6;
-      --text-muted: #9ca3af;
-      --accent: #22d3ee;
-      --accent-hover: #0ea5e9;
-      --border: #262626;
+      --bg-base: #030510;
+      --bg-glass: rgba(13, 17, 33, 0.65);
+      --bg-glass-hover: rgba(20, 26, 48, 0.85);
+      --border-glass: rgba(0, 245, 255, 0.15);
+      --accent: #00f5ff;
+      --accent-glow: rgba(0, 245, 255, 0.5);
+      --accent-alt: #b026ff;
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
       --danger: #ef4444;
       --warning: #f59e0b;
-      --radius: 12px;
+      --success: #10b981;
+      --radius: 16px;
       --font-main: 'Inter', system-ui, sans-serif;
+      --font-display: 'Orbitron', sans-serif;
     }
 
     * { box-sizing: border-box; }
@@ -34,29 +39,45 @@
       display: flex;
       flex-direction: column;
       min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    /* Dynamic Background */
+    .bg-anim {
+      position: fixed;
+      top: 0; left: 0; width: 100vw; height: 100vh;
+      z-index: -1;
+      background: radial-gradient(circle at 15% 50%, rgba(0, 245, 255, 0.08), transparent 50%),
+                  radial-gradient(circle at 85% 30%, rgba(176, 38, 255, 0.08), transparent 50%);
+      filter: blur(60px);
+      animation: pulseBg 15s infinite alternate ease-in-out;
+    }
+
+    @keyframes pulseBg {
+      0% { transform: scale(1); opacity: 0.8; }
+      100% { transform: scale(1.1); opacity: 1; }
     }
 
     /* Scrollbar */
     ::-webkit-scrollbar { width: 8px; }
     ::-webkit-scrollbar-track { background: var(--bg-base); }
-    ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
-    ::-webkit-scrollbar-thumb:hover { background: var(--text-muted); }
+    ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 4px; }
+    ::-webkit-scrollbar-thumb:hover { background: var(--accent); }
 
     /* Header */
     header {
       position: fixed;
-      top: 0;
-      width: 100%;
-      height: 64px;
-      background: rgba(17, 17, 17, 0.8);
-      backdrop-filter: blur(12px);
-      -webkit-backdrop-filter: blur(12px);
-      border-bottom: 1px solid var(--border);
+      top: 0; width: 100%; height: 70px;
+      background: var(--bg-glass);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border-bottom: 1px solid var(--border-glass);
       z-index: 100;
       display: flex;
       align-items: center;
       padding: 0 2rem;
       justify-content: space-between;
+      box-shadow: 0 4px 30px rgba(0, 0, 0, 0.3);
     }
 
     .brand {
@@ -68,158 +89,205 @@
     }
 
     .logo {
-      width: 32px;
-      height: 32px;
-      border-radius: 8px;
-      background: linear-gradient(135deg, var(--accent), var(--accent-hover));
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 16px;
-      font-weight: bold;
-      color: #000;
-    }
-
-    .brand-title {
-      font-weight: 600;
-      font-size: 1.2rem;
-      letter-spacing: -0.02em;
+      font-family: var(--font-display);
+      font-size: 24px;
+      background: linear-gradient(135deg, var(--accent), var(--accent-alt));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      text-shadow: 0 0 20px var(--accent-glow);
     }
 
     .header-links a {
-      color: var(--text-muted);
+      color: var(--text-main);
       text-decoration: none;
       font-size: 0.9rem;
-      transition: color 0.2s;
+      font-weight: 500;
       margin-left: 1.5rem;
+      padding: 8px 16px;
+      border-radius: 8px;
+      transition: all 0.3s;
+      background: rgba(255,255,255,0.05);
+      border: 1px solid transparent;
     }
-    .header-links a:hover { color: var(--text-main); }
+    .header-links a:hover {
+      background: rgba(0, 245, 255, 0.1);
+      border-color: var(--accent);
+      box-shadow: 0 0 15px var(--accent-glow);
+    }
 
     /* Layout */
     .layout {
       display: flex;
-      max-width: 1200px;
-      margin: 64px auto 0;
+      max-width: 1300px;
+      margin: 70px auto 0;
       width: 100%;
       flex: 1;
     }
 
     /* Sidebar */
     .sidebar {
-      width: 260px;
+      width: 280px;
       position: fixed;
-      top: 64px;
-      height: calc(100vh - 64px);
+      top: 70px;
+      height: calc(100vh - 70px);
       overflow-y: auto;
       padding: 2rem 1.5rem;
-      border-right: 1px solid var(--border);
-      background: var(--bg-base);
+      background: linear-gradient(to right, var(--bg-glass), transparent);
+      border-right: 1px solid var(--border-glass);
     }
 
     .sidebar h4 {
-      font-size: 0.75rem;
+      font-family: var(--font-display);
+      font-size: 0.8rem;
+      letter-spacing: 0.1em;
+      color: var(--accent);
+      margin: 2rem 0 0.8rem 0;
       text-transform: uppercase;
-      letter-spacing: 0.05em;
-      color: var(--text-muted);
-      margin: 1.5rem 0 0.5rem 0;
     }
     .sidebar h4:first-child { margin-top: 0; }
 
     .sidebar a {
       display: block;
-      color: var(--text-main);
+      color: var(--text-muted);
       text-decoration: none;
-      font-size: 0.9rem;
-      padding: 0.4rem 0.75rem;
-      border-radius: 6px;
-      margin-bottom: 2px;
-      transition: background 0.2s, color 0.2s;
+      font-size: 0.95rem;
+      padding: 0.5rem 1rem;
+      border-radius: 8px;
+      margin-bottom: 4px;
+      transition: all 0.2s;
+      border-left: 3px solid transparent;
     }
 
     .sidebar a:hover, .sidebar a.active {
-      background: var(--bg-surface-hover);
-      color: var(--accent);
+      background: var(--bg-glass-hover);
+      color: var(--text-main);
+      border-left-color: var(--accent);
+      box-shadow: inset 20px 0 20px -20px var(--accent-glow);
     }
 
     /* Main Content */
     .content {
-      margin-left: 260px;
+      margin-left: 280px;
       padding: 3rem 4rem;
-      max-width: 800px;
+      max-width: 900px;
       width: 100%;
     }
 
-    h1 { font-size: 2.5rem; font-weight: 700; margin-bottom: 0.5rem; letter-spacing: -0.03em; }
-    .lead { font-size: 1.1rem; color: var(--text-muted); margin-bottom: 3rem; }
+    h1 { 
+      font-family: var(--font-display); 
+      font-size: 3rem; 
+      margin-bottom: 1rem; 
+      text-shadow: 0 0 30px rgba(255,255,255,0.1);
+    }
+    .lead { font-size: 1.2rem; color: var(--text-muted); margin-bottom: 4rem; line-height: 1.8; }
     
     h2 {
-      font-size: 1.8rem;
-      font-weight: 600;
-      margin: 3rem 0 1rem;
+      font-family: var(--font-display);
+      font-size: 2rem;
+      margin: 4rem 0 1.5rem;
       padding-bottom: 0.5rem;
-      border-bottom: 1px solid var(--border);
+      border-bottom: 1px solid var(--border-glass);
+      color: #fff;
     }
     
-    h3 { font-size: 1.3rem; font-weight: 600; margin: 2rem 0 1rem; color: var(--accent); }
+    h3 { 
+      font-size: 1.4rem; 
+      font-weight: 600; 
+      margin: 2.5rem 0 1rem; 
+      color: var(--accent); 
+    }
     
-    p { margin-bottom: 1.2rem; }
+    p, li { margin-bottom: 1rem; font-size: 1.05rem; color: #cbd5e1; }
+    ul, ol { padding-left: 1.5rem; margin-bottom: 1.5rem; }
+    li { margin-bottom: 0.5rem; }
+
+    /* Glass Cards */
+    .card {
+      background: var(--bg-glass);
+      backdrop-filter: blur(10px);
+      border: 1px solid var(--border-glass);
+      border-radius: var(--radius);
+      padding: 2rem;
+      margin: 2rem 0;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+      transition: transform 0.3s, box-shadow 0.3s;
+    }
+    .card:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 15px 40px rgba(0, 245, 255, 0.1);
+    }
+
+    .card h4 { margin-top: 0; color: var(--text-main); font-size: 1.2rem; }
 
     /* Alert Boxes */
     .alert {
-      padding: 1rem 1.25rem;
-      border-radius: 8px;
-      margin: 1.5rem 0;
-      border-left: 4px solid;
-      background: var(--bg-surface);
+      padding: 1.5rem;
+      border-radius: 12px;
+      margin: 2rem 0;
+      background: rgba(0,0,0,0.4);
+      border: 1px solid;
+      position: relative;
+      overflow: hidden;
     }
-    .alert-info { border-color: var(--accent); }
-    .alert-warning { border-color: var(--warning); }
-    .alert-danger { border-color: var(--danger); }
+    .alert::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; width: 4px; height: 100%;
+    }
+    .alert-info { border-color: rgba(0, 245, 255, 0.3); }
+    .alert-info::before { background: var(--accent); }
     
-    .alert h4 { margin: 0 0 0.5rem 0; font-size: 1rem; display: flex; align-items: center; gap: 8px; }
-    .alert p { margin: 0; font-size: 0.95rem; color: var(--text-muted); }
+    .alert-warning { border-color: rgba(245, 158, 11, 0.3); }
+    .alert-warning::before { background: var(--warning); }
+    
+    .alert-danger { border-color: rgba(239, 68, 68, 0.3); }
+    .alert-danger::before { background: var(--danger); }
+    
+    .alert-success { border-color: rgba(16, 185, 129, 0.3); }
+    .alert-success::before { background: var(--success); }
+    
+    .alert h4 { margin: 0 0 0.8rem 0; font-size: 1.1rem; }
+    .alert p { margin: 0; font-size: 0.95rem; }
     .alert-info h4 { color: var(--accent); }
     .alert-warning h4 { color: var(--warning); }
     .alert-danger h4 { color: var(--danger); }
+    .alert-success h4 { color: var(--success); }
 
     /* Code blocks */
     code {
-      background: var(--bg-surface-hover);
-      padding: 0.2rem 0.4rem;
-      border-radius: 4px;
+      background: rgba(255,255,255,0.1);
+      padding: 0.2rem 0.5rem;
+      border-radius: 6px;
       font-family: monospace;
-      font-size: 0.9em;
       color: var(--accent);
+      border: 1px solid rgba(255,255,255,0.05);
     }
 
-    /* Images */
-    .doc-image-placeholder {
-      width: 100%;
-      height: 200px;
-      background: var(--bg-surface);
-      border: 1px dashed var(--border);
-      border-radius: var(--radius);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      color: var(--text-muted);
-      margin: 1.5rem 0;
-      font-size: 0.9rem;
+    /* Buttons inside text */
+    .btn-inline {
+      display: inline-block;
+      background: rgba(255,255,255,0.1);
+      padding: 2px 8px;
+      border-radius: 4px;
+      border: 1px solid rgba(255,255,255,0.2);
+      font-size: 0.9em;
     }
 
     /* Responsive */
-    @media (max-width: 900px) {
+    @media (max-width: 1000px) {
       .sidebar { display: none; }
-      .content { margin-left: 0; padding: 2rem; }
+      .content { margin-left: 0; padding: 2rem; max-width: 100%; }
+      header { padding: 0 1rem; }
     }
   </style>
 </head>
 <body>
 
+  <div class="bg-anim"></div>
+
   <header>
     <a href="#" class="brand">
-      <div class="logo">MC</div>
-      <span class="brand-title">MangaCentral Docs</span>
+      <div class="logo">MangaCentral</div>
     </a>
     <nav class="header-links">
       <a href="https://chrome.google.com/webstore" target="_blank">Chrome Web Store</a>
@@ -233,122 +301,147 @@
       <a href="#introduction">Introduction</a>
       <a href="#installation">Installation & Épinglage</a>
       
-      <h4>Fonctionnalités</h4>
-      <a href="#dashboard">Le Tableau de Bord</a>
-      <a href="#overlay">Panneau Flottant (Overlay)</a>
-      <a href="#traduction">Traduction Assistée (IA)</a>
+      <h4>Bibliothèque & Suivi</h4>
+      <a href="#ajouter-manga">Ajouter un manga</a>
+      <a href="#overlay">Le Panneau Flottant</a>
       
-      <h4>Dépannage & Exceptions</h4>
-      <a href="#exception-suivi">Le chapitre ne se met pas à jour</a>
-      <a href="#exception-images">Images cassées (Erreur 403)</a>
-      <a href="#exception-sites">Sites non compatibles</a>
+      <h4>Fonctionnalités Avancées</h4>
+      <a href="#anilist">Synchronisation AniList</a>
+      <a href="#traduction">Traduction par IA (Gemini)</a>
+      <a href="#sauvegardes">Sauvegardes (Export/Import)</a>
+      <a href="#custom-sites">Sites Personnalisés</a>
+      <a href="#desactivation">Désactivation ciblée</a>
       
-      <h4>Informations</h4>
-      <a href="#privacy">Confidentialité</a>
+      <h4>Dépannage</h4>
+      <a href="#exception-suivi">Le suivi ne marche pas</a>
+      <a href="#exception-images">Images de couverture 403</a>
     </aside>
 
     <main class="content">
-      <h1 id="introduction">Documentation MangaCentral</h1>
-      <p class="lead">Bienvenue dans le guide complet d'utilisation de MangaCentral. Découvrez comment tirer le meilleur parti de votre assistant de lecture local.</p>
+      <h1 id="introduction">Guide d'Utilisation MangaCentral</h1>
+      <p class="lead">Découvrez toutes les fonctionnalités de votre assistant de lecture. MangaCentral a été conçu pour automatiser votre suivi de lecture sans jamais vous obliger à quitter vos sites préférés.</p>
 
       <div class="alert alert-info">
-        <h4>Qu'est-ce que MangaCentral ?</h4>
-        <p>MangaCentral est une extension de navigateur qui agit comme un "marque-page intelligent". Elle ne fournit <strong>aucun contenu piraté</strong> ni hébergement de scans. Son unique but est d'améliorer votre expérience sur les sites que vous visitez déjà.</p>
+        <h4>Une approche 100% Locale</h4>
+        <p>MangaCentral fonctionne directement dans votre navigateur. L'extension ne contient <strong>aucun scan</strong> et ne nécessite aucune création de compte sur nos serveurs. Vos données vous appartiennent.</p>
       </div>
-
-      <hr style="border:0; border-top: 1px solid var(--border); margin: 3rem 0;">
 
       <h2 id="installation">Installation & Épinglage</h2>
-      <p>Après avoir installé l'extension depuis le Chrome Web Store, il est fortement recommandé de l'épingler à votre barre d'outils pour y accéder rapidement.</p>
+      <p>Pour une utilisation optimale, MangaCentral doit toujours être à portée de clic.</p>
       <ol>
-        <li>Cliquez sur l'icône de <strong>pièce de puzzle</strong> (Extensions) en haut à droite de Chrome.</li>
+        <li>Une fois l'extension installée depuis le Chrome Web Store, cliquez sur l'icône de <strong>pièce de puzzle</strong> (Extensions) en haut à droite.</li>
         <li>Trouvez "MangaCentral" dans la liste.</li>
-        <li>Cliquez sur l'icône <strong>d'épingle</strong> à côté.</li>
-        <li>L'icône de MangaCentral sera désormais toujours visible en haut à droite.</li>
+        <li>Cliquez sur <strong>l'icône d'épingle</strong> à côté.</li>
       </ol>
 
-      <hr style="border:0; border-top: 1px solid var(--border); margin: 3rem 0;">
+      <h2 id="ajouter-manga">Ajouter un manga à sa bibliothèque</h2>
+      <p>La bibliothèque vous permet de suivre vos œuvres (En cours, En pause, Terminés). Il existe deux méthodes pour y ajouter une série :</p>
 
-      <h2 id="dashboard">Le Tableau de Bord</h2>
-      <p>Le tableau de bord est le cœur de MangaCentral. C'est ici que vous retrouvez toutes vos séries sauvegardées.</p>
-      
-      <h3>Ajouter un Manga</h3>
-      <p>Il existe deux façons d'ajouter un manga à votre bibliothèque :</p>
+      <div class="card">
+        <h4>1. L'ajout Magique (Recommandé)</h4>
+        <p>C'est la méthode la plus simple. MangaCentral analyse la page web sur laquelle vous vous trouvez pour extraire le titre et l'image de couverture.</p>
+        <ul>
+          <li>Rendez-vous sur la page d'un chapitre du manga que vous souhaitez ajouter (sur votre site de scantrad préféré).</li>
+          <li>Ouvrez l'extension MangaCentral.</li>
+          <li>Dans l'onglet <strong>Librairie</strong>, cliquez sur le bouton <span class="btn-inline">📄 Page actuelle</span>.</li>
+          <li>L'extension remplira automatiquement le formulaire avec le titre et l'URL. Vous n'avez plus qu'à sauvegarder !</li>
+        </ul>
+      </div>
+
+      <div class="card">
+        <h4>2. L'ajout Manuel</h4>
+        <p>Si l'extension n'arrive pas à lire les informations du site, vous pouvez le faire manuellement.</p>
+        <ul>
+          <li>Cliquez sur <span class="btn-inline">✏️ Manuellement</span>.</li>
+          <li>Saisissez le titre et collez l'URL de la page.</li>
+          <li>Vous pouvez optionnellement fournir l'URL d'une image de couverture, ou <strong>importer une image depuis votre ordinateur</strong>.</li>
+        </ul>
+      </div>
+
+      <h2 id="overlay">Le Panneau Flottant (Overlay)</h2>
+      <p>Lorsque vous visitez un site de manga compatible, MangaCentral injecte un panneau flottant discret. Il s'agit de votre "télécommande" de lecture.</p>
       <ul>
-        <li><strong>Automatique (Recommandé)</strong> : Cliquez sur "Ajouter", choisissez "Recherche API", tapez le nom du manga et sélectionnez une source (MangaDex, Jikan, AniList). Les informations (titre, couverture) seront remplies automatiquement. Collez simplement l'URL du site où vous le lisez.</li>
-        <li><strong>Manuel</strong> : Saisissez vous-même toutes les informations et l'URL de l'image de couverture.</li>
+        <li><strong>Détection Auto</strong> : En ouvrant un chapitre, l'overlay détectera le numéro du chapitre et l'enregistrera dans votre historique et votre bibliothèque.</li>
+        <li><strong>Auto-Scroll</strong> : Démarrez un défilement automatique paramétrable (vitesse ajustable dans les options) pour lire sans toucher à la souris.</li>
+        <li><strong>Navigation</strong> : Remontez tout en haut de la page ou passez au chapitre suivant d'un simple clic.</li>
       </ul>
 
-      <h3>Statuts de Lecture</h3>
-      <p>Vous pouvez organiser vos mangas avec différents statuts : <code>En cours</code>, <code>En pause</code>, ou <code>Terminé</code>. L'extension filtrera l'affichage en fonction de ces catégories.</p>
-
-      <hr style="border:0; border-top: 1px solid var(--border); margin: 3rem 0;">
-
-      <h2 id="overlay">Panneau Flottant (Overlay)</h2>
-      <p>Lorsque vous visitez un site de manga, MangaCentral injecte un petit panneau flottant discret. Ce panneau offre plusieurs outils de confort.</p>
-
-      <ul>
-        <li><strong>Navigation Rapide</strong> : Boutons pour remonter tout en haut ou descendre tout en bas de la page.</li>
-        <li><strong>Auto-Scroll</strong> : Défilement automatique de la page pour une lecture sans les mains.</li>
-        <li><strong>Suivi de Chapitre</strong> : L'extension tentera de détecter automatiquement le numéro du chapitre actuel et de mettre à jour votre tableau de bord.</li>
-      </ul>
-
-      <hr style="border:0; border-top: 1px solid var(--border); margin: 3rem 0;">
-
-      <h2 id="traduction">Traduction Assistée (IA)</h2>
-      <p>MangaCentral intègre un outil expérimental de traduction propulsé par l'IA (Google Gemini). Cet outil extrait le texte d'une image (OCR) et le traduit en français.</p>
-
-      <h3>Configuration</h3>
+      <h2 id="anilist">Synchronisation Cloud (AniList)</h2>
+      <p>Bien que MangaCentral soit local, vous pouvez lier votre compte AniList pour sauvegarder votre progression dans le cloud.</p>
       <ol>
-        <li>Ouvrez le tableau de bord de MangaCentral.</li>
-        <li>Allez dans les <strong>Paramètres</strong> (icône d'engrenage).</li>
-        <li>Obtenez une clé API Gemini gratuite sur le <a href="https://aistudio.google.com/app/apikey" target="_blank">Google AI Studio</a>.</li>
-        <li>Collez la clé dans le champ prévu et enregistrez.</li>
+        <li>Allez dans les <strong>Paramètres</strong> (icône ⚙).</li>
+        <li>Cliquez sur <strong>Se connecter avec AniList</strong> et autorisez l'application.</li>
+        <li><strong>Importer mes œuvres</strong> : Ce bouton rapatriera toute votre liste AniList directement dans MangaCentral.</li>
+        <li><strong>Synchronisation automatique</strong> : Une fois connecté, chaque fois que MangaCentral détecte un nouveau chapitre lu, il l'enverra discrètement à AniList.</li>
       </ol>
+      <div class="alert alert-success">
+        <h4>Forcer la synchronisation</h4>
+        <p>Si vous avez lu des chapitres hors ligne ou si un envoi a échoué, le bouton "Forcer la synchro AniList" mettra à jour votre profil en ligne avec vos données locales actuelles.</p>
+      </div>
 
-      <h3>Comment l'utiliser</h3>
-      <p>Sur une page de lecture, cliquez sur l'icône de traduction dans le panneau flottant, puis <strong>dessinez un rectangle autour de la bulle de texte</strong> que vous souhaitez traduire.</p>
-
+      <h2 id="traduction">Traduction Assistée par IA (Google Gemini)</h2>
+      <p>L'outil le plus puissant de MangaCentral vous permet de traduire des bulles de texte directement sur l'image.</p>
+      <ol>
+        <li>Dans les Paramètres, collez une clé d'API Google Gemini gratuite (obtenable via Google AI Studio).</li>
+        <li>Sur un manga, ouvrez l'Overlay et cliquez sur l'icône de Traduction.</li>
+        <li><strong>Dessinez un rectangle</strong> englobant parfaitement le texte à traduire.</li>
+        <li>L'IA analysera l'image, extraira le texte (OCR) et vous l'affichera traduit dans la langue choisie.</li>
+      </ol>
       <div class="alert alert-warning">
-        <h4>Conseil de précision</h4>
-        <p>Pour que l'IA fonctionne correctement, votre sélection doit englober <strong>uniquement le texte</strong>. Évitez de sélectionner des éléments de dessin ou de décor autour de la bulle, ce qui pourrait perturber l'extraction (OCR).</p>
+        <h4>Attention à la sélection</h4>
+        <p>Plus votre rectangle est précis (sans inclure de dessins autour de la bulle), plus l'IA sera performante pour extraire les caractères (surtout pour le Coréen ou le Japonais).</p>
       </div>
 
-      <hr style="border:0; border-top: 1px solid var(--border); margin: 3rem 0;">
-
-      <h2 id="exceptions">Dépannage & Exceptions (Pourquoi ça ne marche pas ?)</h2>
-      <p>Étant donné la nature chaotique des sites de mangas, l'extension ne peut pas fonctionner parfaitement à 100% sur tous les sites du web. Voici les problèmes courants et leurs explications.</p>
-
-      <h3 id="exception-suivi">1. Le chapitre ne se met pas à jour dans l'historique</h3>
-      <p>Normalement, MangaCentral détecte que vous changez de chapitre quand l'URL de la page web change. Cependant :</p>
-      <div class="alert alert-warning">
-        <h4>Le problème des Menus Déroulants (Dropdowns)</h4>
-        <p>Certains sites (notamment ceux utilisant des lecteurs spécifiques) ne changent pas l'URL lorsque vous passez au chapitre suivant via un menu déroulant ou un bouton "Suivant" dynamique. L'extension ne "voit" donc pas le changement de page.<br><br>
-        <strong>Solution</strong> : Rechargez la page (F5) ou utilisez les boutons du panneau flottant MangaCentral si disponibles.</p>
-      </div>
-
-      <h3 id="exception-images">2. Les couvertures ne s'affichent pas dans le Tableau de Bord</h3>
-      <p>Vous avez ajouté un manga, mais au lieu de la couverture, vous avez une image cassée ou rien du tout.</p>
-      <div class="alert alert-danger">
-        <h4>Protections Anti-Hotlink (Erreurs 403 / CORS)</h4>
-        <p>Les sites de mangas paient pour la bande passante. Pour éviter que d'autres sites n'utilisent leurs images, ils bloquent le chargement si l'image n'est pas demandée depuis leur propre site. C'est ce qu'on appelle la protection anti-hotlink.<br><br>
-        <strong>Ce que fait MangaCentral</strong> : L'extension utilise des règles réseau (<em>declarativeNetRequest</em>) pour tenter de contourner ces protections localement dans votre navigateur en modifiant les en-têtes (Headers). Mais certains sites ont des protections très avancées que l'extension ne peut pas contourner.<br>
-        <strong>Solution</strong> : Utilisez des images provenant d'API publiques (MangaDex, Jikan) via l'ajout automatique. Ces images ne sont pas bloquées.</p>
-      </div>
-
-      <h3 id="exception-sites">3. L'Overlay n'apparaît pas du tout</h3>
-      <p>Certains sites bloquent l'injection de scripts tiers ou utilisent des cadres (Iframes) complexes pour afficher leurs lecteurs. Sur ces sites, MangaCentral ne pourra pas injecter son panneau flottant ni suivre votre lecture automatiquement.</p>
-
-      <hr style="border:0; border-top: 1px solid var(--border); margin: 3rem 0;">
-
-      <h2 id="privacy">Données & Confidentialité</h2>
-      <p>L'une des priorités de MangaCentral est le respect de votre vie privée.</p>
+      <h2 id="sauvegardes">Sauvegardes (Export / Import)</h2>
+      <p>Vous changez de PC ou vous réinstallez Chrome ? Ne perdez pas votre bibliothèque !</p>
       <ul>
-        <li><strong>Tout est local</strong> : Vos données de lecture, vos mangas sauvegardés et votre historique sont stockés exclusivement dans la mémoire locale de votre navigateur (<code>chrome.storage.local</code>).</li>
-        <li><strong>Aucun compte requis</strong> : Nous n'avons pas de serveurs, pas de base de données en ligne. Vous ne pouvez donc pas "synchroniser" entre deux ordinateurs, mais vos données vous appartiennent à 100%.</li>
-        <li><strong>Clé API Gemini</strong> : Si vous renseignez une clé, elle ne quitte jamais votre ordinateur (sauf pour interroger les serveurs de Google lors d'une demande de traduction explicite).</li>
+        <li>Dans les paramètres, utilisez <strong>Exporter mes données</strong> pour télécharger un fichier <code>.json</code> contenant toute votre bibliothèque, votre historique et vos sites personnalisés.</li>
+        <li>Utilisez <strong>Importer une sauvegarde</strong> sur votre nouveau navigateur pour tout restaurer instantanément.</li>
       </ul>
-      <p><a href="./privacy-policy.html">Lire la politique de confidentialité complète.</a></p>
+
+      <h2 id="custom-sites">Sites Personnalisés (Mode Avancé)</h2>
+      <p>MangaCentral reconnaît nativement des dizaines de lecteurs (MangaTheme, Madara, etc.). Si vous tombez sur un site inconnu, l'Overlay n'apparaîtra pas et le suivi ne se fera pas. Vous pouvez régler cela vous-même !</p>
+      <div class="card">
+        <h4>Ajouter un site personnalisé</h4>
+        <p>Dans les paramètres, sous "Sites personnalisés", vous pouvez définir comment l'extension doit "lire" le site :</p>
+        <ul>
+          <li><strong>Domaine</strong> : L'URL du site (ex: <code>monsite.com</code>).</li>
+          <li><strong>Sélecteur titre (CSS)</strong> : L'élément HTML contenant le titre du manga (ex: <code>h1.entry-title</code>).</li>
+          <li><strong>Pattern chapitre (Regex)</strong> : L'expression régulière pour extraire le numéro du chapitre de l'URL (ex: <code>chapter-(\d+)</code>).</li>
+          <li><strong>Conteneur d'images</strong> : L'élément contenant les pages du manga, nécessaire pour l'auto-scroll.</li>
+        </ul>
+        <p>Le bouton "Tester la page actuelle" vous permet de vérifier en direct si vos sélecteurs fonctionnent !</p>
+      </div>
+
+      <h2 id="desactivation">Désactivation Ciblée</h2>
+      <p>MangaCentral s'injecte sur de nombreuses pages. Si l'extension crée un bug d'affichage sur un site précis (qui n'est pas un site de manga), vous pouvez la désactiver spécifiquement pour ce site.</p>
+      <ul>
+        <li>Ouvrez l'extension sur le site posant problème.</li>
+        <li>Allez dans Paramètres > Activation.</li>
+        <li>À côté de "Onglet actuel", cliquez sur <strong>Désactiver ce site</strong>. L'extension ne s'exécutera plus jamais sur ce domaine.</li>
+      </ul>
+
+      <hr style="border:0; border-top: 1px solid var(--border-glass); margin: 4rem 0;">
+
+      <h1 id="depannage">Dépannage & Exceptions</h1>
+      <p>Le web est chaotique. Voici pourquoi MangaCentral peut parfois sembler ne pas fonctionner.</p>
+
+      <h2 id="exception-suivi">1. L'historique / Le chapitre ne se met pas à jour</h2>
+      <div class="alert alert-danger">
+        <h4>Les Menus Déroulants vs Changement d'URL</h4>
+        <p>MangaCentral détecte que vous avez lu un chapitre lorsque l'URL de votre navigateur change (ex: de <code>/chapter-1</code> à <code>/chapter-2</code>).<br><br>
+        Certains sites utilisent un menu déroulant pour changer les images <strong>sans recharger la page ni changer l'URL</strong>. L'extension est "aveugle" à ce changement.<br><br>
+        <strong>Solution</strong> : Si le site le permet, utilisez le bouton "Chapitre Suivant" de l'Overlay MangaCentral pour forcer le chargement, ou rechargez la page manuellement (F5).</p>
+      </div>
+
+      <h2 id="exception-images">2. Images cassées dans la bibliothèque (Erreurs 403)</h2>
+      <div class="alert alert-danger">
+        <h4>Protections Anti-Hotlinking</h4>
+        <p>Les serveurs des sites de scantrad coûtent cher. Pour éviter que d'autres applications n'utilisent leur bande passante, ils bloquent l'affichage des images (Erreur 403) si l'image est chargée hors de leur propre site.<br><br>
+        <strong>Ce que fait l'extension</strong> : MangaCentral utilise des autorisations avancées (<em>declarativeNetRequest</em>) pour intercepter le chargement de l'image de couverture et dire au serveur "Hé, je suis bien sur ton site !".<br><br>
+        <strong>Pourquoi ça échoue quand même</strong> : Certains sites utilisent des protections dynamiques impossibles à simuler. Dans ce cas, la couverture apparaîtra cassée.<br>
+        <strong>Solution</strong> : Modifiez le manga manuellement et importez une image depuis votre ordinateur (bouton "Ou importer une image").</p>
+      </div>
 
     </main>
   </div>
@@ -363,7 +456,7 @@
         let current = '';
         sections.forEach(section => {
           const sectionTop = section.offsetTop;
-          if (pageYOffset >= sectionTop - 100) {
+          if (pageYOffset >= sectionTop - 150) {
             current = section.getAttribute('id');
           }
         });
