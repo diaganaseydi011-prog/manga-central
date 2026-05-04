@@ -5,7 +5,7 @@
     "action": {
       "type": "modifyHeaders",
       "responseHeaders": [
-        { "header": "Cross-Origin-Resource-Policy", "operation": "remove" }
+        { "header": "cross-origin-resource-policy", "operation": "remove" }
       ]
     },
     "condition": {
@@ -19,7 +19,7 @@
     "action": {
       "type": "modifyHeaders",
       "requestHeaders": [
-        { "header": "Referer", "operation": "set", "value": "https://manhuaus.com/" }
+        { "header": "referer", "operation": "set", "value": "https://manhuaus.com/" }
       ]
     },
     "condition": {
